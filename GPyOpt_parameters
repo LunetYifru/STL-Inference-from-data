@@ -1,0 +1,123 @@
+from cmath import inf
+import torch
+from math import exp
+import stlcg
+from random import seed
+import GPyOpt
+import numpy as np
+from scipy.stats import norm
+import matplotlib.pyplot as plt
+
+x_og = np.linspace(-1, 1, 1000)
+# mean = np.mean(x_og)
+# sd = np.std(x_og)
+# x_og = norm.pdf(x_og, mean, sd)
+# x = torch.tensor(x_og)
+# x = x.reshape(x.shape[0], 1, 1)
+# x_exp = stlcg.Expression('x', x)
+
+
+def GP_opt(*subformula, **inputs):
+    def pars(x):
+        t1 = 0
+        t2 = inf
+        if subformula[0].lower() == 'always':
+            x = x.reshape(1, 2)
+            t1 = int(x[:, 0])
+            t2 = int(x[:, 1])
+            phi = stlcg.Always(
+                subformula[1], interval=[t1, t2])
+        elif subformula[0].lower() == 'eventually':
+            x = x.reshape(1, 2)
+            t1 = int(x[:, 0])
+            t2 = int(x[:, 1])
+            phi = stlcg.Eventually(
+                subformula[1], interval=[t1, t2])
+        elif subformula[0].lower() == 'until':
+            x = x.reshape(1, 2)
+            t1 = int(x[:, 0])
+            t2 = int(x[:, 1])
+            phi = stlcg.Until(
+                subformula[1], subformula[2], interval=[t1, t2])
+        elif subformula[0].lower() == 'lessthan':
+            c = torch.from_numpy(x)
+            phi = list(inputs.values())[0] < c
+        elif subformula[0].lower() == 'greaterthan':
+            c = torch.from_numpy(x)
+            phi = list(inputs.values())[0] < c
+
+        if t1 < t2:
+            try:
+                rob = float(min(phi.robustness(list(inputs.values())[0])))
+                
+            except:
+                rob = float(
+                    min(phi.robustness((list(inputs.values())[0], list(inputs.values())[1]))))
+
+            A = (1/(rob+exp(-10*rob)))-exp(-rob)
+            print('t1 was less than t2', A)
+        else:
+            A = -10
+            print('t1 was greater than t2', A)
+
+        return -A
+
+    if subformula[0].lower() == 'lessthan' or subformula[0].lower() == 'greaterthan':
+        space = [{'name': 'c', 'type': 'continuous', 'domain': (-1, 1)}]
+
+    else:
+        space = [{'name': 't1', 'type': 'continuous', 'domain': (0, len(
+            x_og)-1)}, {'name': 't2', 'type': 'continuous', 'domain': (1, len(x_og))}]
+
+    # constraints = [{'name': 'constr_1', 'constraint': '-x[:,1] -.5 + abs(x[:,0]) - np.sqrt(1-x[:,0]**2)'},
+    #    {'name': 'constr_2', 'constraint': 'x[:,1] +.5 - abs(x[:,0]) - np.sqrt(1-x[:,0]**2)'}]
+
+    feasible_region = GPyOpt.Design_space(space=space)
+    # Grid of points to make the plots
+    grid = 400
+    bounds = feasible_region.get_continuous_bounds()
+    print(bounds)
+
+    # X1 = np.linspace(bounds[0][0], bounds[1][0], grid)
+    # --- CHOOSE the intial design
+
+    seed(123456)
+    initial_design = GPyOpt.experiment_design.initial_design(
+        'random', feasible_region, 10)
+
+    print(initial_design)
+    # --- CHOOSE the objective
+    objective = GPyOpt.core.task.SingleObjective(pars)
+
+    # --- CHOOSE the model type
+    model = GPyOpt.models.GPModel(
+        exact_feval=True, optimize_restarts=10, verbose=False)
+
+    # --- CHOOSE the acquisition optimizer
+    aquisition_optimizer = GPyOpt.optimization.AcquisitionOptimizer(
+        feasible_region)
+
+    # --- CHOOSE the type of acquisition
+    acquisition = GPyOpt.acquisitions.AcquisitionEI(
+        model, feasible_region, optimizer=aquisition_optimizer)
+
+    # --- CHOOSE a collection method
+    evaluator = GPyOpt.core.evaluators.Sequential(acquisition)
+
+    # BO object
+    bo = GPyOpt.methods.ModularBayesianOptimization(
+        model, feasible_region, objective, acquisition, evaluator, initial_design)
+
+    # --- Stop conditions
+    max_time = None
+    max_iter = 15
+    tolerance = 1e-8     # distance between two consecutive observations
+
+    # Run the optimization
+    bo.run_optimization(max_iter=max_iter, max_time=max_time,
+                        eps=tolerance, verbosity=True)
+    # bo.plot_acquisition()
+    # bo.plot_convergence()
+
+    # Best found value
+    return bo.x_opt
