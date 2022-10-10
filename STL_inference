@@ -1,5 +1,6 @@
 import random
 import statistics
+from cmath import exp, inf
 from random import sample
 
 import matplotlib.pyplot as plt
@@ -9,6 +10,8 @@ import torch
 from scipy.stats import norm
 
 import stlcg
+import GPyOptPars
+from GPyOptPars import GP_opt
 
 x_og = np.linspace(-1, 1, 1000)
 mean = statistics.mean(x_og)
@@ -16,39 +19,11 @@ sd = statistics.stdev(x_og)
 x_og = norm.pdf(x_og, mean, sd)
 x = torch.tensor(x_og)
 # x = x.reshape(x.shape[0],1,1)
-x = x.reshape(1,x.shape[0],1)
+x = x.reshape(1, x.shape[0], 1)
 
 
 x_exp = stlcg.Expression('x', x)
-# # c = 2
-# phi1 = x_exp > 0  # stlcg.LessThan(lhs='x_exp', val=c)
-# phi2 = x_exp < 0.5
-# # phi2 = stlcg.Always(subformula=phi1)
-# phi3 = stlcg.Eventually(stlcg.Always(phi1,interval=[10,20]),interval=[10,20])
-# phi4 = stlcg.Eventually(stlcg.Always(phi2, interval=[10,20]),interval=[10,20])
-# phi5 = phi3 | phi4
-# # method_list = [method for method in dir(
-# #     stlcg) if method.startswith('__') is False]
-# # print(method_list)
-# inputs = (x_exp, x_exp)
-# print('phi5 = ', phi5)
-# rob1 = phi1.robustness(x_exp)
-# rob2 = phi2.robustness(x_exp)
-# rob3 = phi3.robustness(x_exp)
-# rob4 = phi4.robustness(x_exp)
-# rob5 = phi5.robustness(inputs)
-# print(min(rob1),min(rob2),min(rob3),min(rob4),min(rob5))
 
-
-# plt.grid()
-# plt.plot(x_og)
-# # plt.plot(rob1.reshape(1000))
-# # plt.plot(rob2.reshape(1000))
-# # plt.plot(rob3.reshape(1000))
-# # plt.plot(rob4.reshape(1000))
-# plt.plot(rob5.reshape(1000))
-# plt.legend(['x', 'rob1', 'rob2', 'rob3', 'rob4', 'rob5'])
-# plt.show()
 
 pop_df = pd.DataFrame()
 t1 = 10
@@ -58,9 +33,8 @@ c2 = 20
 for_1 = stlcg.LessThan(lhs='x_exp', val=c1)
 for_2 = stlcg.GreaterThan(lhs='x_exp', val=c2)
 
-print(for_1,for_2)
 
-##########################Random initialization of population ########################
+##########################    Random initialization of population    ########################
 population = {}
 population['phi_1'] = for_1
 population['phi_2'] = for_2
@@ -86,13 +60,28 @@ pop_df['Formula'] = population.values()
 pop_df['Subformula'] = [None, None, list(population.values())[0], list(population.values())[1], list(population.values())[0], list(
     population.values())[1], list(population.values())[2], list(population.values())[3], list(population.values())[4], list(population.values())[5]]
 
+
 pop_ext = {}
 for i in range(11, 51):
     rand = random.randint(1, 4)
     subformula = random.sample(list(population.values()), 2)
-    # if subformula1 == subformula2
+
+    def always_pars(t1, t2):
+        x = x.reshape(1, 2)
+        t1 = int(x[:, 1])
+        t2 = int(x[:, 2])
+        if t1 < t2:
+            phi = stlcg.Always(
+                subformula[0], interval=[t1, t2])
+            rob = float(min(phi.robustness(x_exp)))
+            A = (1/(rob+exp(-10*rob)))-exp(-rob)
+        else:
+            A = -10
+        return -A
 
     if rand == 1:
+        pars = GP_opt(subformula[0], subformula[1], x_exp, x_exp)
+
         pop_ext['phi_' +
                 str(i)] = stlcg.Until(subformula[0], subformula[1], interval=[t1, t2])
         pop_df = pop_df.append({'Name': 'phi_' + str(i),
@@ -118,6 +107,8 @@ for i in range(11, 51):
                                                    str(i)], 'Subformula': [subformula[0]]}, ignore_index=True)
 population = {**population, **pop_ext}
 print('Length of DF ---', len(pop_df))
+
+print(pop_df.head(15))
 ###############################     GPUCB to update parameters      ####################
 
 
@@ -125,12 +116,12 @@ print('Length of DF ---', len(pop_df))
 def compute_rob(formula):
     try:
         rob = min(formula.robustness(x_exp))
-        
+
     except:
         rob = min(formula.robustness((x_exp, x_exp)))
     # print(rob)
     return rob
-    
+
 
 def formula_size(formula):
     string = str(formula)
@@ -139,7 +130,6 @@ def formula_size(formula):
     for i in string:
         if i in ops:
             count += 1
-    print(count)
     return count
 
 
@@ -149,71 +139,70 @@ def fitness_func(robustness, size):
 
 
 ###################      Compute robustness, size, and fitness       ###########################
+
 pop_rob = []
 pop_size = []
 pop_fit = []
 for i in pop_df['Formula']:
     print(i)
     pop_rob.append(compute_rob(i))
+    print('Robustness: ', compute_rob(i))
     pop_size.append(formula_size(i))
+    print('Size: ', formula_size(i))
     pop_fit.append(fitness_func(pop_rob[-1], pop_size[-1]))
 
 
 ####################          Update dataframe        ##########################
+
 pop_df['Robustness'] = pop_rob
 pop_df['Size'] = pop_size
 pop_df['Fitness'] = pop_fit
 
 #####################      Rearrange  population with descending order of fitness  ############
+
 pop_df['Rank'] = pop_df['Fitness'].rank(ascending=0)
 pop_df = pop_df.set_index('Rank')
 pop_df = pop_df.sort_index()
 pop_df.reset_index(inplace=True)
 print(pop_df.head())
 
+####################       New generation parents (Top 25)   ####################
 
-####################
+pop_df_new = pop_df.head(25)
+print(pop_df_new.columns)
 
+###################################   Mutation and CrossOver (Remaining 25)   ################################
 
-test = pop_df.iloc[2]
-print(test)
+for i in range(26, 51):
+    if random.random() < 0.1:
+        # Mutation
 
-x = pop_df.iloc[2]['Subformula']
+        # def Mutation(formula, subformula):
+        #     # alter temporal operators
+        #     if isinstance(formula, stlcg.Always):
+        #         # change to eventually
+        #         phi = stlcg.Eventually(subformula[1])
+        #         pass
+        #     elif isinstance(formula, stlcg.Eventually,):
+        #         phi = stlcg.Always(subformula[1])
+        #         # change to Always
+        #         pass
+        #     # alter predicate sign
+        #     elif isinstance(formula, stlcg.And):
+        #         # change to greater than
+        #         phi = stlcg.Or(subformula[1], subformula[2])
+        #     elif isinstance(formula, stlcg.Or):
+        #         # change to greater than
+        #         phi = stlcg.And(subformula[1], subformula[2])
+        #     return phi
+        pass
+    else:
+        continue
+        # crossover
 
-print(x)
-
-
-# print(isinstance(x[0], STLFormula.always))
-
-
-# Mutation
-
-# def Mutation(formula, subformula):
-#     # alter temporal operators
-#     if isinstance(formula, stlcg.Always):
-#         # change to eventually
-#         phi = stlcg.Eventually(subformula[1])
-#         pass
-#     elif isinstance(formula, stlcg.Eventually,):
-#         phi = stlcg.Always(subformula[1])
-#         # change to Always
-#         pass
-#     # alter predicate sign
-#     elif isinstance(formula, stlcg.And):
-#         # change to greater than
-#         phi = stlcg.Or(subformula[1], subformula[2])
-#     elif isinstance(formula, stlcg.Or):
-#         # change to greater than
-#         phi = stlcg.And(subformula[1], subformula[2])
-#     return phi
-
-
-# def Crossover(formula1, formula2, subformula1, sunformula2):
-#     if isinstance(formula1, stlcg.And) and isinstance(formula1, stlcg.Or):
-#         pass
+        # def Crossover(formula1, formula2, subformula1, sunformula2):
+        # if isinstance(formula1, stlcg.And) and isinstance(formula1, stlcg.Or):
+        #pop_ext['phi_' + str(i)] = stlcg.Negation(subformula[0])
 
 
-# # # print('population = ', popuation)
-
-
-# if random.random() < 0.1:
+# x = pop_df.iloc[2]['Subformula']
