@@ -9,65 +9,100 @@ from scipy.stats import norm
 import matplotlib.pyplot as plt
 
 x_og = np.linspace(-1, 1, 1000)
-# mean = np.mean(x_og)
-# sd = np.std(x_og)
-# x_og = norm.pdf(x_og, mean, sd)
-# x = torch.tensor(x_og)
-# x = x.reshape(x.shape[0], 1, 1)
-# x_exp = stlcg.Expression('x', x)
 
 
-def GP_opt(*subformula, **inputs):
+
+def GP_opt(*subfor, **inputs):
     def pars(x):
         t1 = 0
         t2 = inf
-        if subformula[0].lower() == 'always':
+        if subfor[0].lower() == 'always':
             x = x.reshape(1, 2)
             t1 = int(x[:, 0])
             t2 = int(x[:, 1])
-            phi = stlcg.Always(
-                subformula[1], interval=[t1, t2])
-        elif subformula[0].lower() == 'eventually':
+            if subfor[1].lower() == 'x1':
+                phi = stlcg.Always(
+                    subfor[2], interval=[t1, t2])
+            else:
+                phi = stlcg.Always(
+                    subfor[2], interval=[t1, t2])
+        elif subfor[0].lower() == 'eventually':
             x = x.reshape(1, 2)
             t1 = int(x[:, 0])
             t2 = int(x[:, 1])
-            phi = stlcg.Eventually(
-                subformula[1], interval=[t1, t2])
-        elif subformula[0].lower() == 'until':
+            if subfor[1].lower() == 'x1':
+                phi = stlcg.Eventually(
+                    subfor[2], interval=[t1, t2])
+            else:
+                phi = stlcg.Eventually(
+                    subfor[2], interval=[t1, t2])
+        elif subfor[0].lower() == 'until':
             x = x.reshape(1, 2)
             t1 = int(x[:, 0])
             t2 = int(x[:, 1])
             phi = stlcg.Until(
-                subformula[1], subformula[2], interval=[t1, t2])
-        elif subformula[0].lower() == 'lessthan':
+                subfor[2],subfor[3], interval=[t1, t2])
+        elif subfor[0].lower() == 'lessthan':
             c = torch.from_numpy(x)
-            phi = list(inputs.values())[0] < c
-        elif subformula[0].lower() == 'greaterthan':
+            if subfor[1].lower() == 'x1':
+                phi = inputs['input1'][0]  < c
+            else:
+                phi = inputs['input2'][0] < c
+            
+        elif subfor[0].lower() == 'greaterthan':
             c = torch.from_numpy(x)
-            phi = list(inputs.values())[0] < c
+
+            if subfor[1].lower() == 'x1':
+                phi = inputs['input1'][0]  > c
+            else:
+                phi = inputs['input2'][0] > c
+
+        rob_reg = np.empty(0)
+        rob_anom = np.empty(0)
+        print(phi)
 
         if t1 < t2:
-            try:
-                rob = float(min(phi.robustness(list(inputs.values())[0])))
-                
-            except:
-                rob = float(
-                    min(phi.robustness((list(inputs.values())[0], list(inputs.values())[1]))))
+            for i in range(len(inputs['input1'])):
+                x_1_reg = inputs['input1'][i]
+                x_2_reg = inputs['input2'][i]
+                x_1_anom= inputs['input3'][i]
+                x_2_anom= inputs['input4'][i]
+                ip_2_reg = (x_1_reg, x_2_reg)
+                ip_2_anom = (x_1_anom, x_2_anom)
+    
+                try:
+                    if subfor[1].lower() == 'x1':
+                        rob_reg = np.append(rob_reg , float(min(phi.robustness(x_1_reg))))
+                        # print('Robustness : ',float(min(phi.robustness(x_1_reg))))
+                    else:
+                        rob_reg = np.append(rob_reg , float(min(phi.robustness(x_2_reg))))
+                        # print('Robustness : ',float(min(phi.robustness(x_2_reg))))
+                except:
+                    rob_reg = np.append(rob_reg , float(min(phi.robustness(ip_2_reg))))
+                    # print('Robustness : ',float(min(phi.robustness(ip_2_reg))))
 
-            A = (1/(rob+exp(-10*rob)))-exp(-rob)
-            print('t1 was less than t2', A)
+                
+            
+
+            rob_reg_av = np.average(rob_reg)
+            print('Robustness average', rob_reg_av)
+            rob_anom_av = np.average(rob_anom)
+            rob_reg_std = np.std(rob_reg)
+            rob_anom_std = np.std(rob_anom)
+            A = (1/(rob_reg_av+exp(-10*rob_reg_av)))-exp(-rob_reg_av)
         else:
             A = -10
-            print('t1 was greater than t2', A)
-
+            # print('t1 was greater than t2', A)
         return -A
 
-    if subformula[0].lower() == 'lessthan' or subformula[0].lower() == 'greaterthan':
-        space = [{'name': 'c', 'type': 'continuous', 'domain': (-1, 1)}]
+    if subfor[0].lower() == 'lessthan' or subfor[0].lower() == 'greaterthan':
+        if subfor[1].lower == 'x1':
+            space = [{'name': 'c', 'type': 'continuous', 'domain': (0.5*inputs['rng'][0][0], 2*inputs['rng'][0][1])}]
+        else:
+            space = [{'name': 'c', 'type': 'continuous', 'domain': (0.5*inputs['rng'][1][0], 2*inputs['rng'][1][1])}]
 
     else:
-        space = [{'name': 't1', 'type': 'continuous', 'domain': (0, len(
-            x_og)-1)}, {'name': 't2', 'type': 'continuous', 'domain': (1, len(x_og))}]
+        space = [{'name': 't1', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)}, {'name': 't2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])}]
 
     # constraints = [{'name': 'constr_1', 'constraint': '-x[:,1] -.5 + abs(x[:,0]) - np.sqrt(1-x[:,0]**2)'},
     #    {'name': 'constr_2', 'constraint': 'x[:,1] +.5 - abs(x[:,0]) - np.sqrt(1-x[:,0]**2)'}]
@@ -85,7 +120,7 @@ def GP_opt(*subformula, **inputs):
     initial_design = GPyOpt.experiment_design.initial_design(
         'random', feasible_region, 10)
 
-    print(initial_design)
+    # print(initial_design)
     # --- CHOOSE the objective
     objective = GPyOpt.core.task.SingleObjective(pars)
 
@@ -110,12 +145,13 @@ def GP_opt(*subformula, **inputs):
 
     # --- Stop conditions
     max_time = None
-    max_iter = 15
+    max_iter = 1
     tolerance = 1e-8     # distance between two consecutive observations
 
     # Run the optimization
     bo.run_optimization(max_iter=max_iter, max_time=max_time,
                         eps=tolerance, verbosity=True)
+
     # bo.plot_acquisition()
     # bo.plot_convergence()
 
