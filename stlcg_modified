@@ -846,7 +846,7 @@ class Until(STL_Formula):
         return [self.subformula1, self.subformula2]
 
     def __str__(self):
-        return "(" + str(self.subformula1) + ")" + " U " + "(" + str(self.subformula2) + ")"
+        return "(" + str(self.subformula1) + ")" + " U " + str(self.interval) +"(" + str(self.subformula2) + ")"
 
 
 class Then(STL_Formula):
