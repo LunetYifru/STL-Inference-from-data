@@ -148,8 +148,7 @@ pop_df['Subformula'] = [x1_reg_exp[0], x1_reg_exp[0], x2_reg_exp[0], x2_reg_exp[
                         population['phi_3'], population['phi_4'], population['phi_5'], population['phi_6'], population['phi_7'], population['phi_8'], population['phi_9'], population['phi_10'], population['phi_11'], population['phi_12']]
 # pop_df['Signal'] = [x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp,
 # x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, ]
-pop_df['Signal'] = ['x', 'x', 'y', 'y', 'x', 'x', 'y', 'y',
-                    'x', 'x', 'y', 'y', 'x', 'x', 'y', 'y', 'x', 'x', 'y', 'y']
+pop_df['Signal'] = ['x', 'x', 'y', 'y', 'x', 'x', 'y', 'y','x', 'x', 'y', 'y', 'x', 'x', 'y', 'y', 'x', 'x', 'y', 'y']
 print(pop_df.head(20))
 
 ######################### random initialization of non-primary formulae + GP_opt  #######################
@@ -202,50 +201,58 @@ print('Length of DF ---', len(pop_df))
 import copy
 def compute_rob(formula, signal):
     rob_all = np.empty(0)
-    print('fromula: ', formula, 'signal: ', signal, 'type: ', type(signal))
-    print('sig1:', signal)
+    print('fromula: ', formula, 'signal: ', signal)
     if isinstance(signal, str):
         signal = [signal]
 
-    for k in range(len(x1_reg_exp)):
+    for l in range(len(x1_reg_exp)):
         copy_sig = copy.deepcopy(signal)
-        print('sig2:', signal)
+        print('signal is:', signal)
         for i in range(len(copy_sig)):
-            print('copy sig:', copy_sig)
-            print('signal is:', signal)
             if len(copy_sig[i]) == 1:
                 print('len is 1')
                 if copy_sig[i] == 'x':
-                    print('len is 1, it is x', i)
-                    print('signal is:', signal)
-                    copy_sig[i] = x1_reg_exp[k]
-                    print('signal is:', signal, 'copy is', copy_sig)
+                    print('len is 1, it is x----', i)
+                    copy_sig[i] = x1_reg_exp[l]
+                    print('Copy sig nowwww - ', copy_sig)
                 else:
-                    print('len is 1, it is y', i)
-                    print(
-                        'Now: ', copy_sig[i], '--- Change to: ', type(x2_reg_exp[k]))
-                    print('signal is:', signal)
-                    copy_sig[i] = x2_reg_exp[k]
+                    print('len is 1, it is y----', i)
+                    copy_sig[i] = x2_reg_exp[l]
                     print('Copy sig nowwww - ', copy_sig)
             else:
                 for j in range(len(copy_sig[i])):
-                    print('copy sig here is : ', copy_sig)
-                    print('len is not 1', i, j)
-                    print(copy_sig[i][j], '----i is: ', i, '----j is: ', j)
-                    print('signal is:', signal)
-                    if copy_sig[i][j] == 'x':
-                        copy_sig[i][j] = x1_reg_exp[k]
+                    if len(copy_sig[i][j]) == 1:
+                        if copy_sig[i][j] == 'x':
+                            print('len of [i][j] is 1, it is x----',i,j)
+                            copy_sig[i][j] = x1_reg_exp[l]
+                            print('Copy sig nowwww - ', copy_sig)
+                        else:
+                            print('len of [i][j] is 1, it is y----',i,j)
+                            copy_sig[i][j] = x2_reg_exp[l]
+                            print('Copy sig nowwww - ', copy_sig)
                     else:
-                        print('len is not 1, it is y', i, j)
-                        copy_sig[i][j] = x2_reg_exp[k]
-                        print('signal is:', signal)
+                        for k in range(len(copy_sig[i][j])):
+                            if copy_sig[i][j][k] == 'x':
+                                print('len of [i][j] is not 1, it is x----',i,j.k)
+                                copy_sig[i][j][k] = x1_reg_exp[l]
+                                print('Copy sig nowwww - ', copy_sig)
+                            else:
+                                print('len of [i][j] is not 1, it is y----',i,j,k)
+                                copy_sig[i][j][k] = x2_reg_exp[l]
+                                print('Copy sig nowwww - ', copy_sig)
+
 
         for i in range(len(copy_sig)):
             if not(isinstance(copy_sig[i],  stlcg.Expression)):
-                copy_sig[i] = tuple(copy_sig[i])
+                for j in range(len(copy_sig[i])):
+                    if not(isinstance(copy_sig[i][j],  stlcg.Expression)):
+                        copy_sig[i][j] = tuple(copy_sig[i][j])
+                    # for k in range(len(copy_sig[i])):
+                    #     if not(isinstance(copy_sig[i][j][k],  stlcg.Expression)):
+                    #                             copy_sig[i][j][k] = tuple(copy_sig[i][j][k])
 
         copy_sig = tuple(copy_sig)
-
+        print(copy_sig)
         try:
             rob = min(formula.robustness(copy_sig[0]))
         except:
@@ -287,7 +294,7 @@ for i in range(len(pop_df)):
     signal = pop_df.iloc[i]['Signal']
 
     pop_rob.append(compute_rob(formula, signal))
-    print('Average robustness: ', pop_rob[-1])
+    print('Average robustness(reg dataset): ', pop_rob[-1])
 
     pop_size.append(formula_size(formula))
     print('Size: ', formula_size(formula))
