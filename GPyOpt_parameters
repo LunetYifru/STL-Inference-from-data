@@ -58,18 +58,39 @@ def GP_opt(*subfor, **inputs):
                 x_2_anom = inputs['input4'][i]
                 ip_2_reg = (x_1_reg, x_2_reg)
                 ip_2_anom = (x_1_anom, x_2_anom)
-
-                try:
+                if subfor[0].lower() == 'lessthan' or subfor[0].lower() == 'greaterthan':
                     if subfor[1].lower() == 'x1':
-                        rob_reg = np.append(rob_reg, float(min(phi.robustness(x_1_reg))))
-                        # print('Robustness : ',float(min(phi.robustness(x_1_reg))))
-                    else:
-                        rob_reg = np.append(rob_reg, float(
-                            min(phi.robustness(x_2_reg))))
-                        # print('Robustness : ',float(min(phi.robustness(x_2_reg))))
-                except:
-                    rob_reg = np.append(rob_reg, float(
-                        min(phi.robustness(ip_2_reg))))
+                        rob_ = float(min(phi.robustness(x_1_reg)))
+                        rob_reg = np.append(rob_reg, rob_)
+                    elif subfor[1].lower() == 'x2':
+                        rob_ = float(min(phi.robustness(x_2_reg)))
+                        rob_reg = np.append(rob_reg, rob_)
+                else:
+                    try:
+                        if subfor[0].lower() == 'always':
+                            if subfor[1].lower() == 'x1':
+                                # print('size of rob tensor is :',phi.robustness(x_1_reg)[t1:t2],t1,t2)
+                                rob_ = float(min(phi.robustness(x_1_reg)[t1:t2]))
+                                rob_reg = np.append(rob_reg, rob_)
+                            else:
+                                rob_ = float(min(phi.robustness(x_2_reg)[t1:t2]))
+                                rob_reg = np.append(rob_reg, rob_)
+                        elif subfor[0].lower() == 'eventually':
+                            if subfor[1].lower() == 'x1':
+                                rob_ = float(max(phi.robustness(x_1_reg)[t1:t2]))
+                                rob_reg = np.append(rob_reg, rob_)
+                            else:
+                                rob_ = float(max(phi.robustness(x_2_reg)[t1:t2]))
+                                rob_reg = np.append(rob_reg, rob_)
+                        
+                    except:
+                        if subfor[0].lower() == 'always':
+                                rob_ = float(min(phi.robustness(ip_2_reg)[t1:t2]))
+                                rob_reg = np.append(rob_reg, rob_)
+                        elif subfor[0].lower() == 'eventually':
+                                rob_ = float(max(phi.robustness(ip_2_reg)[t1:t2]))
+                                rob_reg = np.append(rob_reg, rob_)
+                    
                     # print('Robustness : ',float(min(phi.robustness(ip_2_reg))))
 
             rob_reg_av = np.average(rob_reg)
@@ -79,9 +100,11 @@ def GP_opt(*subfor, **inputs):
             rob_anom_std = np.std(rob_anom)
             A = (1/(rob_reg_av+exp(-10*rob_reg_av)))-exp(-rob_reg_av)
         else:
-            A = -10
+            A = -100
             # print('t1 was greater than t2', A)
         return -A
+
+
 
     if subfor[0].lower() == 'lessthan' or subfor[0].lower() == 'greaterthan':
         if subfor[1].lower == 'x1':
@@ -109,7 +132,7 @@ def GP_opt(*subfor, **inputs):
 
     seed(123456)
     initial_design = GPyOpt.experiment_design.initial_design(
-        'random', feasible_region, 5)
+        'random', feasible_region, 10)
 
     # print(initial_design)
     # --- CHOOSE the objective
