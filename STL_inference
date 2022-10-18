@@ -1,5 +1,4 @@
 import random
-import statistics
 from cmath import exp, inf
 from random import sample
 
@@ -7,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-from scipy.stats import norm
 
 import stlcg
 import GPyOptPars
@@ -154,7 +152,7 @@ print(pop_df.head(20))
 ######################### random initialization of non-primary formulae + GP_opt  #######################
 pop_ext = {}
 for i in range(11, 51):
-    rand = random.randint(2, 4)
+    rand = random.randint(2, 3)
     num = random.sample(range(0, len(pop_df)), 2)
 
     subformula = [pop_df.iloc[num[0]]['Formula'],
@@ -243,16 +241,11 @@ def compute_rob(formula, signal):
 
 
         for i in range(len(copy_sig)):
-            if not(isinstance(copy_sig[i],  stlcg.Expression)):
-                for j in range(len(copy_sig[i])):
-                    if not(isinstance(copy_sig[i][j],  stlcg.Expression)):
-                        copy_sig[i][j] = tuple(copy_sig[i][j])
-                    # for k in range(len(copy_sig[i])):
-                    #     if not(isinstance(copy_sig[i][j][k],  stlcg.Expression)):
-                    #                             copy_sig[i][j][k] = tuple(copy_sig[i][j][k])
-
-        copy_sig = tuple(copy_sig)
+            if not isinstance(copy_sig[i],stlcg.Expression):
+                copy_sig[i] = tuple(copy_sig[i])
+        copysig = tuple(copy_sig)
         print(copy_sig)
+        
         try:
             rob = min(formula.robustness(copy_sig[0]))
         except:
