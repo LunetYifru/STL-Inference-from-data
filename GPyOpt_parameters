@@ -7,6 +7,8 @@ import GPyOpt
 import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt
+import STL_inference
+from STL_inference import fix_sig
 
 x_og = np.linspace(-1, 1, 1000)
 
@@ -171,3 +173,5 @@ def GP_opt(*subfor, **inputs):
 
     # Best found value
     return bo.x_opt
+
+
