@@ -57,104 +57,126 @@ for i in range(len(x1_reg.columns)):
 
 pop_df = pd.DataFrame()
 par = []
+sig = []
+
 
 population = {}
-X = GP_opt('lessthan', 'x1', input1=x1_reg_exp, input2=x2_reg_exp,
+sig.append('x')
+X = GP_opt('lessthan', sig[-1], input1=x1_reg_exp, input2=x2_reg_exp,
            input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([X[0]])
 population['phi_1'] = x1_reg_exp[0] < X[0]
-X = GP_opt('greaterthan', 'x1', input1=x1_reg_exp, input2=x2_reg_exp,
+sig.append('x')
+X = GP_opt('greaterthan', sig[-1], input1=x1_reg_exp, input2=x2_reg_exp,
            input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([X[0]])
 population['phi_2'] = x1_reg_exp[0] > X[0]
-X = GP_opt('lessthan', 'x2', input1=x1_reg_exp, input2=x2_reg_exp,
+sig.append('y')
+X = GP_opt('lessthan', sig[-1], input1=x1_reg_exp, input2=x2_reg_exp,
            input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([X[0]])
 population['phi_3'] = x2_reg_exp[0] < X[0]
-X = GP_opt('greaterthan', 'x2', input1=x1_reg_exp, input2=x2_reg_exp,
+sig.append('y')
+X = GP_opt('greaterthan', sig[-1], input1=x1_reg_exp, input2=x2_reg_exp,
            input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([X[0]])
 population['phi_4'] = x2_reg_exp[0] > X[0]
 
-X = GP_opt('always', 'x1', population['phi_1'], input1=x1_reg_exp,
+sig.append('x')
+X = GP_opt('always', sig[-1], population['phi_1'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_5'] = stlcg.Always(
     population['phi_1'], interval=[int(X[0]), int(X[1])])
-X = GP_opt('always', 'x1', population['phi_2'], input1=x1_reg_exp,
+sig.append('x')
+X = GP_opt('always', sig[-1], population['phi_2'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_6'] = stlcg.Always(
     population['phi_2'], interval=[int(X[0]), int(X[1])])
-X = GP_opt('always', 'x2', population['phi_3'], input1=x1_reg_exp,
+sig.append('y')
+X = GP_opt('always', sig[-1], population['phi_3'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_7'] = stlcg.Always(
     population['phi_3'], interval=[int(X[0]), int(X[1])])
-X = GP_opt('always', 'x2', population['phi_4'], input1=x1_reg_exp,
+sig.append('y')
+X = GP_opt('always', sig[-1], population['phi_4'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_8'] = stlcg.Always(
     population['phi_4'], interval=[int(X[0]), int(X[1])])
 
-X = GP_opt('eventually', 'x1', population['phi_1'], input1=x1_reg_exp,
+sig.append('x')
+X = GP_opt('eventually', sig[-1], population['phi_1'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_9'] = stlcg.Eventually(
     population['phi_1'], interval=[int(X[0]), int(X[1])])
-X = GP_opt('eventually', 'x1', population['phi_2'], input1=x1_reg_exp,
+sig.append('x')
+X = GP_opt('eventually', sig[-1], population['phi_2'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_10'] = stlcg.Eventually(
     population['phi_2'], interval=[int(X[0]), int(X[1])])
-X = GP_opt('eventually', 'x2', population['phi_3'], input1=x1_reg_exp,
+sig.append('y')
+X = GP_opt('eventually', sig[-1], population['phi_3'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_11'] = stlcg.Eventually(
     population['phi_3'], interval=[int(X[0]), int(X[1])])
-X = GP_opt('eventually', 'x2', population['phi_4'], input1=x1_reg_exp,
+sig.append('y')
+X = GP_opt('eventually', sig[-1], population['phi_4'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_12'] = stlcg.Eventually(
     population['phi_4'], interval=[int(X[0]), int(X[1])])
 
-X = GP_opt('always', 'x1', population['phi_9'], input1=x1_reg_exp,
+sig.append('x')
+X = GP_opt('always', sig[-1], population['phi_9'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_13'] = stlcg.Always(
     population['phi_9'], interval=[int(X[0]), int(X[1])])
-X = GP_opt('always', 'x1', population['phi_10'], input1=x1_reg_exp,
+sig.append('x')
+X = GP_opt('always', sig[-1], population['phi_10'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_14'] = stlcg.Always(
     population['phi_10'], interval=[int(X[0]), int(X[1])])
-X = GP_opt('always', 'x2', population['phi_11'], input1=x1_reg_exp,
+sig.append('y')
+X = GP_opt('always', sig[-1], population['phi_11'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_15'] = stlcg.Always(
     population['phi_11'], interval=[int(X[0]), int(X[1])])
-X = GP_opt('always', 'x2', population['phi_12'], input1=x1_reg_exp,
+sig.append('y')
+X = GP_opt('always', sig[-1], population['phi_12'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_16'] = stlcg.Always(
     population['phi_12'], interval=[int(X[0]), int(X[1])])
 
-X = GP_opt('eventually', 'x1', population['phi_5'], input1=x1_reg_exp,
+sig.append('x')
+X = GP_opt('eventually', sig[-1], population['phi_5'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_17'] = stlcg.Eventually(
     population['phi_5'], interval=[int(X[0]), int(X[1])])
-X = GP_opt('eventually', 'x1', population['phi_6'], input1=x1_reg_exp,
+sig.append('x')
+X = GP_opt('eventually', sig[-1], population['phi_6'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_18'] = stlcg.Eventually(
     population['phi_6'], interval=[int(X[0]), int(X[1])])
-X = GP_opt('eventually', 'x2', population['phi_7'], input1=x1_reg_exp,
+sig.append('y')
+X = GP_opt('eventually', sig[-1], population['phi_7'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_19'] = stlcg.Eventually(
     population['phi_7'], interval=[int(X[0]), int(X[1])])
-X = GP_opt('eventually', 'x2', population['phi_8'], input1=x1_reg_exp,
+sig.append('y')
+X = GP_opt('eventually', sig[-1], population['phi_8'], input1=x1_reg_exp,
            input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
 par.append([int(X[0]), int(X[1])])
 population['phi_20'] = stlcg.Eventually(
@@ -167,25 +189,26 @@ pop_df['Subformula'] = [x1_reg_exp[0], x1_reg_exp[0], x2_reg_exp[0], x2_reg_exp[
                         population['phi_3'], population['phi_4'], population['phi_5'], population['phi_6'], population['phi_7'], population['phi_8'], population['phi_9'], population['phi_10'], population['phi_11'], population['phi_12']]
 # pop_df['Signal'] = [x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp,
 # x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, ]
-pop_df['Signal'] = ['x', 'x', 'y', 'y', 'x', 'x', 'y', 'y','x', 'x', 'y', 'y', 'x', 'x', 'y', 'y', 'x', 'x', 'y', 'y']
+pop_df['Signal'] = sig
 pop_df['Parameters']= par
 print(pop_df.head(20))
 
 ######################### random initialization of non-primary formulae + GP_opt  #######################
 pop_ext = {}
 for i in range(11, 51):
-    rand = random.randint(1, 3)
+    rand = random.randint(2, 3)
     num = random.sample(range(0, 20), 2)
 
     subformula = [pop_df.iloc[num[0]]['Formula'],
                   pop_df.iloc[num[1]]['Formula']]
+    
 
     if rand == 1:
         while pop_df.iloc[num[0]]['Signal'] == pop_df.iloc[num[1]]['Signal']:
             num = random.sample(range(0, len(pop_df)+1), 2)
-            subformula = [pop_df.iloc[num[0]]['Formula'],
-                          pop_df.iloc[num[1]]['Formula']]
-        X = GP_opt('until', 'both', subformula[0], subformula[1], input1=x1_reg_exp,
+            subformula = [pop_df.iloc[num[0]]['Formula'], pop_df.iloc[num[1]]['Formula']]
+            
+        X = GP_opt('until',  [pop_df.iloc[num[0]]['Signal'], pop_df.iloc[num[1]]['Signal']], subformula[0], subformula[1], input1=x1_reg_exp,
                    input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
         pop_ext['phi_' +
                 str(i)] = stlcg.Until(subformula[0], subformula[1], interval=[int(X[1]), int(X[1])])
@@ -220,7 +243,10 @@ print('Length of DF ---', len(pop_df))
 ##############################     parameters for formula           ##################
 import copy
 
-def fix_sig(signal,l,x1_reg_exp):   
+def fix_IP(signal,l):  
+    if isinstance(signal, str):
+        signal = [signal]
+    
     copy_sig = copy.deepcopy(signal)      
     copy_sig = tuple(x1_reg_exp[l] if not isinstance(j,list) and j == 'x' else x2_reg_exp[l] if not isinstance(j,list) and j == 'y'
                 else(tuple(x1_reg_exp[l] if not isinstance(k,list) and k == 'x' else x2_reg_exp[l] if not isinstance(k,list) and k == 'y'
@@ -233,36 +259,32 @@ def fix_sig(signal,l,x1_reg_exp):
                                             if isinstance(i,list)  else x1_reg_exp[l] if i == 'x' else x2_reg_exp[l] for i in k)) for k in j)) for j in copy_sig)
     return copy_sig
 
-def compute_rob(formula, signal,pars):
+def compute_rob(formula, signal, pars):
     rob_all = np.empty(0)
     print('fromula: ', formula, 'signal: ', signal)
-    if isinstance(signal, str):
-        signal = [signal]
-    for l in range(len(x1_reg_exp)):            
-        copy_sig = fix_sig(signal,l,x1_reg_exp)
-    
-        print('Tuple signal: ', copy_sig)
+    for l in range(len(x1_reg_exp)):      
+        IP = fix_IP(signal,l)        
+        
+        print('Tuple signal: ', IP)
         
         try:
             if isinstance(formula, stlcg.Always):
-                rob = float(min(formula.robustness(copy_sig[0])[pars[0]:pars[1]]))
+                rob = float(min(formula.robustness(IP[0])[pars[0]:pars[1]]))
             elif isinstance(formula, stlcg.Eventually):
-                rob = float(max(formula.robustness(copy_sig[0])[pars[0]:pars[1]]))
+                rob = float(max(formula.robustness(IP[0])[pars[0]:pars[1]]))
             else:
-                rob = float(min(formula.robustness(copy_sig[0])))
+                rob = float(min(formula.robustness(IP[0])))
         except:
             if isinstance(formula, stlcg.Always):
-                rob = float(min(formula.robustness(copy_sig)[pars[0]:pars[1]]))
+                rob = float(min(formula.robustness(IP)[pars[0]:pars[1]]))
             elif isinstance(formula, stlcg.Eventually):
-                rob = float(max(formula.robustness(copy_sig)[pars[0]:pars[1]]))
+                rob = float(max(formula.robustness(IP)[pars[0]:pars[1]]))
             else:
-                rob = float(min(formula.robustness(copy_sig)))
+                rob = float(min(formula.robustness(IP)))
                 
         rob_all = np.append(rob_all, rob)
     
-        print('Tuple signal: ', copy_sig)
-    
-        return np.average(rob_all)
+    return np.average(rob_all)
 
 
 def formula_size(formula):
@@ -312,17 +334,19 @@ pop_df['Size'] = pop_size
 pop_df['Fitness'] = pop_fit
 
 #####################      Rearrange  population with descending order of fitness  ############
-
-pop_df['Rank'] = pop_df['Fitness'].rank(ascending=0)
-pop_df = pop_df.set_index('Rank')
-pop_df = pop_df.sort_index()
-pop_df.reset_index(inplace=True)
-print(pop_df.head())
+def rank(dataframe):
+    dataframe['Rank'] = dataframe['Fitness'].rank(ascending=0)
+    dataframe = dataframe.set_index('Rank')
+    dataframe = dataframe.sort_index()
+    dataframe.reset_index(inplace=True)
+    dataframe.drop(columns=['Rank'])
+    return dataframe
+    
 
 ####################       New generation parents (Top 25)   ####################
-
+pop_df_ranked = rank(pop_df)
 pop_df_new = pop_df.head(25)
-print(pop_df_new.columns)
+print(pop_df_new.head(10))
 
 ###############################   Mutation and Crossover Functions   ###########
 
@@ -330,22 +354,20 @@ def Mutation(index):
     formula = pop_df_new.iloc[index]['Formula']
     subformula = pop_df_new.iloc[index]['Subformula']
     signal = pop_df_new.iloc[index]['Signal']
-    pars = pop_df_new.iloc[index]['Parameters']
+    print(type(formula),formula,subformula,signal)
     # alter temporal operators
     if isinstance(formula, stlcg.Always):
         # change to eventually
-        X = GP_opt('always', signal, subformula[0], input1=x1_reg_exp,
-                   input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
-        phi = stlcg.Eventually(subformula[0], interval=[int(X[0]), int(X[1])])
+        X = GP_opt('eventually', signal, subformula, input1=x1_reg_exp,input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
+        phi = stlcg.Eventually(subformula, interval=[int(X[0]), int(X[1])])
         param = [int(X[0]), int(X[1])]
-    elif isinstance(formula, stlcg.Eventually, interval=[int(X[0]), int(X[1])]):
-        X = GP_opt('eventually', signal, subformula[0], input1=x1_reg_exp,
+    elif isinstance(formula, stlcg.Eventually):
+        X = GP_opt('always', signal, subformula, input1=x1_reg_exp,
                    input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
         # change to Always
-        phi = stlcg.Always(subformula[0], interval=[int(X[0]), int(X[1])])
-        subfor = subformula[0]
+        phi = stlcg.Always(subformula, interval=[int(X[0]), int(X[1])])
         param = [int(X[0]), int(X[1])]
-    elif isinstance(formula, stlcg.Until, interval=[]):
+    elif isinstance(formula, stlcg.Until):
         X = GP_opt('until', signal, subformula[1],subformula[0], input1=x1_reg_exp,
                    input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
         # flip until
@@ -353,29 +375,44 @@ def Mutation(index):
         param = [int(X[0]), int(X[1])]
     elif isinstance(formula, stlcg.And):
         # change to or
-        phi = stlcg.Or(subformula[1], subformula[2])
-        subfor = subformula
-        param = [int(X[0]), int(X[1])]
+        phi = stlcg.Or(subformula[0], subformula[1])
     elif isinstance(formula, stlcg.Or):
         # change to and
-        phi = stlcg.And(subformula[1], subformula[2])
+        phi = stlcg.And(subformula[0], subformula[1])
     elif isinstance(formula, stlcg.LessThan):
         # change to >
         X = GP_opt('greaterthan', signal, input1=x1_reg_exp,
                    input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
-        phi = subformula[0] > X[0]
+        phi = stlcg.GreaterThan(subformula,X[0])
+        param = [X[0]]
     elif isinstance(formula, stlcg.GreaterThan):
         # change to <
         X = GP_opt('lessthan', signal, input1=x1_reg_exp, input2=x2_reg_exp,
                    input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
-        phi = subformula[0] < X[0]
-    return phi
+        
+        phi = stlcg.LessThan(subformula,X[0])
+        param = [X[0]]
+        
+    return phi, subformula, signal, param
 
 
-def Crossover(index):
-    formula = pop_df_new.iloc[index]['Formula']
-    subformula = pop_df_new.iloc[index]['Subformula']
-    signal = pop_df_new.iloc[index]['Signal']
+def Crossover(index1,index2):
+    formula1 = pop_df_new.iloc[index1]['Formula']
+    formula2 = pop_df_new.iloc[index2]['Formula']
+    subformula1 = pop_df_new.iloc[index1]['Subformula']
+    subformula2 = pop_df_new.iloc[index2]['Subformula']
+    
+    print(type(formula),formula,subformula,signal)
+    
+    if isinstance(formula1, stlcg.And) and isinstance(formula2, stlcg.And):
+        # flip subformula
+        phi1 = stlcg.And(subformula1[0], subformula2[1])
+        phi2 = stlcg.And(subformula2[0], subformula1[1])
+    elif isinstance(formula1, stlcg.Or) and isinstance(formula2, stlcg.Or):
+        # flip subformula
+        phi1 = stlcg.Or(subformula1[0], subformula2[1])
+        phi2 = stlcg.Or(subformula2[0], subformula1[1])
+    
 
 
 for i in pop_df_new['Formula']:
