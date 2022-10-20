@@ -187,8 +187,6 @@ pop_df['Name'] = population.keys()
 pop_df['Formula'] = population.values()
 pop_df['Subformula'] = [x1_reg_exp[0], x1_reg_exp[0], x2_reg_exp[0], x2_reg_exp[0], population['phi_1'], population['phi_2'], population['phi_3'], population['phi_4'], population['phi_1'], population['phi_2'],
                         population['phi_3'], population['phi_4'], population['phi_5'], population['phi_6'], population['phi_7'], population['phi_8'], population['phi_9'], population['phi_10'], population['phi_11'], population['phi_12']]
-# pop_df['Signal'] = [x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp,
-# x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, x1_reg_exp, ]
 pop_df['Signal'] = sig
 pop_df['Parameters']= par
 print(pop_df.head(20))
@@ -202,7 +200,6 @@ for i in range(11, 51):
     subformula = [pop_df.iloc[num[0]]['Formula'],
                   pop_df.iloc[num[1]]['Formula']]
     
-
     if rand == 1:
         while pop_df.iloc[num[0]]['Signal'] == pop_df.iloc[num[1]]['Signal']:
             num = random.sample(range(0, len(pop_df)+1), 2)
@@ -236,7 +233,6 @@ for i in range(11, 51):
                                                    str(i)], 'Subformula': [subformula[0]], 'Signal': [pop_df.iloc[num[0]]['Signal']]}, ignore_index=True)
 population = {**population, **pop_ext}
 
-print(pop_df.head(30))
 print('Length of DF ---', len(pop_df))
 
 
@@ -304,6 +300,17 @@ def fitness_func(robustness, size):
         # decrease robustness by (size-2)X10 % for sizes greater than 2
         Fitness_score = robustness*(1-(size-2))*0.1
     return Fitness_score
+    
+ #####################      Rearrange  population with descending order of fitness  ############
+
+
+def rank(dataframe):
+    dataframe['Rank'] = dataframe['Fitness'].rank(ascending=0)
+    dataframe = dataframe.set_index('Rank')
+    dataframe = dataframe.sort_index()
+    dataframe.reset_index(inplace=True)
+    dataframe.drop(columns=['Rank'])
+    return dataframe
 
 ###################      Compute robustness, size, and fitness       ###########################
 
@@ -332,16 +339,6 @@ for i in range(len(pop_df)):
 pop_df['Robustness'] = pop_rob
 pop_df['Size'] = pop_size
 pop_df['Fitness'] = pop_fit
-
-#####################      Rearrange  population with descending order of fitness  ############
-def rank(dataframe):
-    dataframe['Rank'] = dataframe['Fitness'].rank(ascending=0)
-    dataframe = dataframe.set_index('Rank')
-    dataframe = dataframe.sort_index()
-    dataframe.reset_index(inplace=True)
-    dataframe.drop(columns=['Rank'])
-    return dataframe
-    
 
 ####################       New generation parents (Top 25)   ####################
 pop_df_ranked = rank(pop_df)
@@ -412,21 +409,15 @@ def Crossover(index1,index2):
         # flip subformula
         phi1 = stlcg.Or(subformula1[0], subformula2[1])
         phi2 = stlcg.Or(subformula2[0], subformula1[1])
+    return phi1,phi2,subformula1[0],subformula2[1],subformula2[0],subformula1[1]
     
 
 
-for i in pop_df_new['Formula']:
-    if random.random() < 0.1:
-        # Mutation
-
-        pass
+for i in i in range(11, 51):
+    if random.random() < 0.5:
+        num = random.sample(range(0, 25), 1)
+        phi, subformula, signal, param = Mutation(num)
     else:
         continue
         # crossover
 
-        # def Crossover(formula1, formula2, subformula1, sunformula2):
-        # if isinstance(formula1, stlcg.And) and isinstance(formula1, stlcg.Or):
-        #pop_ext['phi_' + str(i)] = stlcg.Negation(subformula[0])
-
-
-# x = pop_df.iloc[2]['Subformula']
