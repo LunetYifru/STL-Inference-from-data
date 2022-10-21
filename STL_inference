@@ -239,12 +239,12 @@ print('Length of DF ---', len(pop_df))
 ##############################     parameters for formula           ##################
 import copy
 
-def fix_IP(signal,l):  
+def fix_IP_reg(signal,l):  
     if isinstance(signal, str):
         signal = [signal]
     
     copy_sig = copy.deepcopy(signal)      
-    copy_sig = tuple(x1_reg_exp[l] if not isinstance(j,list) and j == 'x' else x2_reg_exp[l] if not isinstance(j,list) and j == 'y'
+    copy_sig_reg = tuple(x1_reg_exp[l] if not isinstance(j,list) and j == 'x' else x2_reg_exp[l] if not isinstance(j,list) and j == 'y'
                 else(tuple(x1_reg_exp[l] if not isinstance(k,list) and k == 'x' else x2_reg_exp[l] if not isinstance(k,list) and k == 'y'
                     else (tuple(tuple(tuple(tuple(tuple(tuple(tuple(tuple(g) if not isinstance(g,list) else x1_reg_exp[l] if g == 'x' else x2_reg_exp[l] for g in n)
                         if isinstance(n,list) else x1_reg_exp[l] if n == 'x' else x2_reg_exp[l] for n in v)
@@ -253,34 +253,74 @@ def fix_IP(signal,l):
                                     if isinstance(s,list)  else x1_reg_exp[l] if s == 'x' else x2_reg_exp[l] for s in z)
                                         if isinstance(z,list)  else x1_reg_exp[l] if z == 'x' else x2_reg_exp[l] for z in i)
                                             if isinstance(i,list)  else x1_reg_exp[l] if i == 'x' else x2_reg_exp[l] for i in k)) for k in j)) for j in copy_sig)
-    return copy_sig
+    return copy_sig_reg
+
+def fix_IP_anom(signal,l):  
+    if isinstance(signal, str):
+        signal = [signal]
+    
+    copy_sig = copy.deepcopy(signal)      
+    copy_sig_anom = tuple(x1_anom_exp[l] if not isinstance(j,list) and j == 'x' else x2_anom_exp[l] if not isinstance(j,list) and j == 'y'
+                else(tuple(x1_anom_exp[l] if not isinstance(k,list) and k == 'x' else x2_anom_exp[l] if not isinstance(k,list) and k == 'y'
+                    else (tuple(tuple(tuple(tuple(tuple(tuple(tuple(tuple(g) if not isinstance(g,list) else x1_anom_exp[l] if g == 'x' else x2_anom_exp[l] for g in n)
+                        if isinstance(n,list) else x1_anom_exp[l] if n == 'x' else x2_anom_exp[l] for n in v)
+                            if isinstance(v,list) else x1_anom_exp[l] if v == 'x' else x2_anom_exp[l] for v in w)
+                                if isinstance(w,list)  else x1_anom_exp[l] if w == 'x' else x2_anom_exp[l] for w in s)
+                                    if isinstance(s,list)  else x1_anom_exp[l] if s == 'x' else x2_anom_exp[l] for s in z)
+                                        if isinstance(z,list)  else x1_anom_exp[l] if z == 'x' else x2_anom_exp[l] for z in i)
+                                            if isinstance(i,list)  else x1_anom_exp[l] if i == 'x' else x2_anom_exp[l] for i in k)) for k in j)) for j in copy_sig)
+    return copy_sig_anom
 
 def compute_rob(formula, signal, pars):
-    rob_all = np.empty(0)
+    rob_reg_all = np.empty(0)
+    rob_anom_all = np.empty(0)
     print('fromula: ', formula, 'signal: ', signal)
+    pos = 0
+    neg = 0
     for l in range(len(x1_reg_exp)):      
-        IP = fix_IP(signal,l)        
-        
-        print('Tuple signal: ', IP)
+        IP_reg = fix_IP_reg(signal,l)  
+        IP_anom = fix_IP_anom(signal,l)  
         
         try:
             if isinstance(formula, stlcg.Always):
-                rob = float(min(formula.robustness(IP[0])[pars[0]:pars[1]]))
+                rob_reg = float(min(formula.robustness(IP_reg[0])[pars[0]:pars[1]]))
+                rob_anom = float(min(formula.robustness(IP_anom[0])[pars[0]:pars[1]]))
             elif isinstance(formula, stlcg.Eventually):
-                rob = float(max(formula.robustness(IP[0])[pars[0]:pars[1]]))
+                rob_reg = float(max(formula.robustness(IP_reg[0])[pars[0]:pars[1]]))
+                rob_anom = float(max(formula.robustness(IP_anom[0])[pars[0]:pars[1]]))
             else:
-                rob = float(min(formula.robustness(IP[0])))
+                rob_reg = float(min(formula.robustness(IP_reg[0])))
+                rob_anom = float(min(formula.robustness(IP_anom[0])))
         except:
             if isinstance(formula, stlcg.Always):
-                rob = float(min(formula.robustness(IP)[pars[0]:pars[1]]))
+                rob_reg = float(min(formula.robustness(IP_reg)[pars[0]:pars[1]]))
+                rob_anom = float(min(formula.robustness(IP_anom)[pars[0]:pars[1]]))
             elif isinstance(formula, stlcg.Eventually):
-                rob = float(max(formula.robustness(IP)[pars[0]:pars[1]]))
+                rob_reg = float(max(formula.robustness(IP_reg)[pars[0]:pars[1]]))
+                rob_anom = float(max(formula.robustness(IP_anom)[pars[0]:pars[1]]))
             else:
-                rob = float(min(formula.robustness(IP)))
+                rob_reg = float(min(formula.robustness(IP_reg)))
+                rob_anom = float(min(formula.robustness(IP_anom)))
                 
-        rob_all = np.append(rob_all, rob)
+        rob_reg_all = np.append(rob_reg_all, rob_reg)
+        rob_anom_all = np.append(rob_anom_all, rob_anom)
+        
+    # for i in rob_reg_all:
+    #     if i > 0:
+    #         pos+=1
+    # for i in rob_anom_all:
+    #     print(i)
+    #     if i < 0:
+    #         neg +=1
+            
+    pos = len(list(filter(lambda x: (x >= 0), rob_reg_all)))
+    neg = len(list(filter(lambda x: (x < 0), rob_anom_all)))
+
     
-    return np.average(rob_all)
+    results = [pos, neg]
+    rob_diff = np.absolute(np.average(rob_reg_all) - np.average(rob_anom_all))
+    
+    return rob_diff,results
 
 
 def formula_size(formula):
@@ -293,12 +333,12 @@ def formula_size(formula):
     return count
 
 
-def fitness_func(robustness, size):
+def fitness_func(rob_difference, size):
     if size < 3:
-        Fitness_score = robustness
+        Fitness_score = rob_difference
     else:
         # decrease robustness by (size-2)X10 % for sizes greater than 2
-        Fitness_score = robustness*(1-(size-2))*0.1
+        Fitness_score = rob_difference*(1-(size-2))/10
     return Fitness_score
     
  #####################      Rearrange  population with descending order of fitness  ############
@@ -318,19 +358,21 @@ def rank(dataframe):
 pop_rob = []
 pop_size = []
 pop_fit = []
+res = []
 for i in range(len(pop_df)):
     formula = pop_df.iloc[i]['Formula']
     subformula = pop_df.iloc[i]['Subformula']
     signal = pop_df.iloc[i]['Signal']
     pars = pop_df.iloc[i]['Parameters']
-
-    pop_rob.append(compute_rob(formula, signal, pars))
-    print('Average robustness(reg dataset): ', pop_rob[-1])
-
+    
+    rob_diff, results = compute_rob(formula, signal, pars)
+    pop_rob.append(rob_diff)
+    res.append(results)
+    print('Average robustness(reg dataset): ', pop_rob[-1],'results',results)
     pop_size.append(formula_size(formula))
     print('Size: ', formula_size(formula))
-
-    pop_fit.append(fitness_func(pop_rob[-1], pop_size[-1]))
+    fitness = fitness_func(pop_rob[-1], pop_size[-1])
+    pop_fit.append(fitness)
     print('Fitness Score: ', pop_fit[-1])
 
 
@@ -339,6 +381,7 @@ for i in range(len(pop_df)):
 pop_df['Robustness'] = pop_rob
 pop_df['Size'] = pop_size
 pop_df['Fitness'] = pop_fit
+pop_df['Results'] = res
 
 ####################       New generation parents (Top 25)   ####################
 pop_df_ranked = rank(pop_df)
@@ -413,11 +456,12 @@ def Crossover(index1,index2):
     
 
 
-for i in i in range(11, 51):
-    if random.random() < 0.5:
+for i in range(26, 27):
+    rand = random.random()
+    print(rand)
+    if rand <0.5:
         num = random.sample(range(0, 25), 1)
         phi, subformula, signal, param = Mutation(num)
     else:
         continue
         # crossover
-
