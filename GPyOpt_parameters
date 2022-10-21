@@ -44,17 +44,17 @@ def GP_opt(*subfor, **inputs):
             else:
                 phi = inputs['input2'][0] > c
 
-        rob_reg = np.empty(0)
-        rob_anom = np.empty(0)
+        rob_reg_all = np.empty(0)
+        rob_anom_all = np.empty(0)
         
         print('phi is----',phi)
         
-        def fix_IP(signal,l):  
+        def fix_IP_reg(signal,l):  
             if isinstance(signal, str):
                 signal = [signal]
             
             copy_sig = copy.deepcopy(signal)      
-            copy_sig = tuple(inputs['input1'][l] if not isinstance(j,list) and j == 'x' else inputs['input2'][l] if not isinstance(j,list) and j == 'y'
+            copy_sig_reg = tuple(inputs['input1'][l] if not isinstance(j,list) and j == 'x' else inputs['input2'][l] if not isinstance(j,list) and j == 'y'
                         else(tuple(inputs['input1'][l] if not isinstance(k,list) and k == 'x' else inputs['input2'][l] if not isinstance(k,list) and k == 'y'
                             else (tuple(tuple(tuple(tuple(tuple(tuple(tuple(tuple(g) if not isinstance(g,list) else inputs['input1'][l] if g == 'x' else inputs['input2'][l] for g in n)
                                 if isinstance(n,list) else inputs['input1'][l] if n == 'x' else inputs['input2'][l] for n in v)
@@ -63,41 +63,67 @@ def GP_opt(*subfor, **inputs):
                                             if isinstance(s,list)  else inputs['input1'][l] if s == 'x' else inputs['input2'][l] for s in z)
                                                 if isinstance(z,list)  else inputs['input1'][l] if z == 'x' else inputs['input2'][l] for z in i)
                                                     if isinstance(i,list)  else inputs['input1'][l] if i == 'x' else inputs['input2'][l] for i in k)) for k in j)) for j in copy_sig)
-            return copy_sig
+            return copy_sig_reg
+        
+        def fix_IP_anom(signal,l):  
+            if isinstance(signal, str):
+                signal = [signal]
+            
+            copy_sig = copy.deepcopy(signal)      
+            copy_sig_anom = tuple(inputs['input3'][l] if not isinstance(j,list) and j == 'x' else inputs['input4'][l] if not isinstance(j,list) and j == 'y'
+                        else(tuple(inputs['input3'][l] if not isinstance(k,list) and k == 'x' else inputs['input4'][l] if not isinstance(k,list) and k == 'y'
+                            else (tuple(tuple(tuple(tuple(tuple(tuple(tuple(tuple(g) if not isinstance(g,list) else inputs['input3'][l] if g == 'x' else inputs['input4'][l] for g in n)
+                                if isinstance(n,list) else inputs['input3'][l] if n == 'x' else inputs['input4'][l] for n in v)
+                                    if isinstance(v,list) else inputs['input3'][l] if v == 'x' else inputs['input4'][l] for v in w)
+                                        if isinstance(w,list)  else inputs['input3'][l] if w == 'x' else inputs['input4'][l] for w in s)
+                                            if isinstance(s,list)  else inputs['input3'][l] if s == 'x' else inputs['input4'][l] for s in z)
+                                                if isinstance(z,list)  else inputs['input3'][l] if z == 'x' else inputs['input4'][l] for z in i)
+                                                    if isinstance(i,list)  else inputs['input3'][l] if i == 'x' else inputs['input4'][l] for i in k)) for k in j)) for j in copy_sig)
+            return copy_sig_anom
 
         if t1 < t2:
             for i in range(len(inputs['input1'])):
-                signal = fix_IP(subfor[1],i)
+                signal_reg = fix_IP_reg(subfor[1],i)
+                signal_anom = fix_IP_anom(subfor[1],i)
                 try:
                     if isinstance(phi,stlcg.Always):
-                        rob_ = float(min(phi.robustness(signal[0])[t1:t2]))
+                        rob_reg = float(min(phi.robustness(signal_reg[0])[t1:t2]))
+                        rob_anom = float(min(phi.robustness(signal_reg[0])[t1:t2]))
                     elif isinstance(phi,stlcg.Eventually):
-                        rob_ = float(max(phi.robustness(signal[0])[t1:t2]))
+                        rob_reg = float(max(phi.robustness(signal_reg[0])[t1:t2]))
+                        rob_anom = float(max(phi.robustness(signal_anom[0])[t1:t2]))
                     else:
-                        rob_ = float(min(phi.robustness(signal[0]))) 
+                        rob_reg = min(phi.robustness(signal_reg[0]))
+                        rob_anom = min(phi.robustness(signal_anom[0]))
                 except:
                     if isinstance(phi,stlcg.Always):
-                        rob_ = float(min(phi.robustness(signal)[t1:t2]))
+                        rob_reg = float(min(phi.robustness(signal_reg)[t1:t2]))
+                        rob_anom = float(min(phi.robustness(signal_anom)[t1:t2]))
+
                     elif isinstance(phi,stlcg.Eventually):
-                        rob_ = float(max(phi.robustness(signal)[t1:t2]))
+                        rob_reg = float(max(phi.robustness(signal_reg)[t1:t2]))
+                        rob_anom = float(max(phi.robustness(signal_anom)[t1:t2]))
+
                     else:
-                        rob_ = float(min(phi.robustness(signal))) 
+                        rob_reg = min(phi.robustness(signal_reg))
+                        rob_anom = min(phi.robustness(signal_anom))
                 
-                rob_reg = np.append(rob_reg, rob_)
+                rob_reg_all = np.append(rob_reg_all, rob_reg)
+                rob_anom_all = np.append(rob_anom_all, rob_anom)
                     
                     # print('Robustness : ',float(min(phi.robustness(ip_2_reg))))
 
-            rob_reg_av = np.average(rob_reg)
-            print('Robustness average', rob_reg_av)
-            rob_anom_av = np.average(rob_anom)
-            rob_reg_std = np.std(rob_reg)
-            rob_anom_std = np.std(rob_anom)
+            rob_reg_av = np.average(rob_reg_all)
+            rob_anom_av = np.average(rob_anom_all)
+            rob_reg_std = np.std(rob_reg_all)
+            rob_anom_std = np.std(rob_anom_all)
             
-            A = (1/(rob_reg_av+exp(-10*rob_reg_av)))-exp(-rob_reg_av)
+            # A = (1/(rob_reg_av+exp(-10*rob_reg_av)))-exp(-rob_reg_av)
+            gap = np.absolute(rob_reg_av - rob_anom_av)
         else:
-            A = -100
+            gap = -100
             # print('t1 was greater than t2', A)
-        return -A
+        return -gap
 
 
 
@@ -166,5 +192,4 @@ def GP_opt(*subfor, **inputs):
 
     # Best found value
     return bo.x_opt
-
 
