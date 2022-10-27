@@ -10,7 +10,6 @@ import copy
 
 
 def GP_opt(*subfor, **inputs):
-    print('signal---',subfor[1])
     def pars(x):
         t1 = 0
         t2 = inf
@@ -24,11 +23,11 @@ def GP_opt(*subfor, **inputs):
             t1 = int(x[:, 0])
             t2 = int(x[:, 1])
             phi = stlcg.Eventually(subfor[2], interval=[t1, t2])
-        elif subfor[0].lower() == 'until':
-            x = x.reshape(1, 2)
-            t1 = int(x[:, 0])
-            t2 = int(x[:, 1])
-            phi = stlcg.Until(subfor[2], subfor[3], interval=[t1, t2])
+#        elif subfor[0].lower() == 'until':
+#            x = x.reshape(1, 2)
+#            t1 = int(x[:, 0])
+#            t2 = int(x[:, 1])
+#            phi = stlcg.Until(subfor[2], subfor[3], interval=[t1, t2])
             
         elif subfor[0].lower() == 'lessthan':
             c = torch.from_numpy(x)
@@ -47,7 +46,7 @@ def GP_opt(*subfor, **inputs):
         rob_reg_all = np.empty(0)
         rob_anom_all = np.empty(0)
         
-        print('phi is----',phi)
+        
         
         def fix_IP_reg(signal,l):  
             if isinstance(signal, str):
@@ -80,7 +79,9 @@ def GP_opt(*subfor, **inputs):
                                                 if isinstance(z,list)  else inputs['input3'][l] if z == 'x' else inputs['input4'][l] for z in i)
                                                     if isinstance(i,list)  else inputs['input3'][l] if i == 'x' else inputs['input4'][l] for i in k)) for k in j)) for j in copy_sig)
             return copy_sig_anom
-
+        
+#        print('Phi:', phi)
+        
         if t1 < t2:
             for i in range(len(inputs['input1'])):
                 signal_reg = fix_IP_reg(subfor[1],i)
@@ -115,8 +116,8 @@ def GP_opt(*subfor, **inputs):
 
             rob_reg_av = np.average(rob_reg_all)
             rob_anom_av = np.average(rob_anom_all)
-            rob_reg_std = np.std(rob_reg_all)
-            rob_anom_std = np.std(rob_anom_all)
+#            rob_reg_std = np.std(rob_reg_all)
+#            rob_anom_std = np.std(rob_anom_all)
             
             # A = (1/(rob_reg_av+exp(-10*rob_reg_av)))-exp(-rob_reg_av)
             gap = np.absolute(rob_reg_av - rob_anom_av)
@@ -130,10 +131,10 @@ def GP_opt(*subfor, **inputs):
     if subfor[0].lower() == 'lessthan' or subfor[0].lower() == 'greaterthan':
         if subfor[1].lower == 'x1':
             space = [{'name': 'c', 'type': 'continuous', 'domain': (
-                0.5*inputs['rng'][0][0], 2*inputs['rng'][0][1])}]
+                0.5*inputs['rng'][0][0], inputs['rng'][0][1])}]
         else:
             space = [{'name': 'c', 'type': 'continuous', 'domain': (
-                0.5*inputs['rng'][1][0], 2*inputs['rng'][1][1])}]
+                0.5*inputs['rng'][1][0], inputs['rng'][1][1])}]
 
     else:
         space = [{'name': 't1', 'type': 'continuous', 'domain': (
@@ -145,13 +146,13 @@ def GP_opt(*subfor, **inputs):
     feasible_region = GPyOpt.Design_space(space=space)
     # Grid of points to make the plots
 #    grid = 400
-    bounds = feasible_region.get_continuous_bounds()
-    print(bounds)
+#    bounds = feasible_region.get_continuous_bounds()
+#    print(bounds)
 
     # X1 = np.linspace(bounds[0][0], bounds[1][0], grid)
     # --- CHOOSE the intial design
 
-    seed(123456)
+#    seed(123456)
     initial_design = GPyOpt.experiment_design.initial_design(
         'random', feasible_region, 10)
 
