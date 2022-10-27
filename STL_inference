@@ -14,10 +14,10 @@ from GPyOptPars import GP_opt
 
 
 ###################    Import Data    ##############################
-x1_reg = pd.read_excel(r'x1_reg.xlsx', header=None)
-x2_reg = pd.read_excel(r'x2_reg.xlsx', header=None)
-x1_anom = pd.read_excel(r'x1_anom.xlsx', header=None)
-x2_anom = pd.read_excel(r'x2_anom.xlsx', header=None)
+x1_reg = pd.read_excel(r'x1_reg.xlsx', header=None).iloc[::-1]
+x2_reg = pd.read_excel(r'x2_reg.xlsx', header=None).iloc[::-1]
+x1_anom = pd.read_excel(r'x1_anom.xlsx', header=None).iloc[::-1]
+x2_anom = pd.read_excel(r'x2_anom.xlsx', header=None).iloc[::-1]
 
 rng_x1_reg = (min(x1_reg.min()), max(x1_reg.max()))
 rng_x2_reg = (min(x2_reg.min()), max(x2_reg.max()))
@@ -41,6 +41,7 @@ x1_anom_exp = []
 x2_anom_exp = []
 
 for i in range(len(x1_reg.columns)):
+
     x1 = torch.tensor(x1_reg.iloc[:, i])
     x1 = x1.reshape(x1.shape[0], 1, 1)
     x_exp = stlcg.Expression('x1', x1)
@@ -64,6 +65,7 @@ for i in range(len(x1_reg.columns)):
 
 ###########  Random initialization of primary population and GP_opt to update parameters  ##########
 def Initialize(x1_reg_exp,x2_reg_exp,x1_anom_exp,x2_anom_exp,rng):
+    print('-------------Initializing population--------------')
     pop_df = pd.DataFrame()
     par = []
     sig = []
@@ -198,12 +200,14 @@ def Initialize(x1_reg_exp,x2_reg_exp,x1_anom_exp,x2_anom_exp,rng):
                             population['phi_3'], population['phi_4'], population['phi_5'], population['phi_6'], population['phi_7'], population['phi_8'], population['phi_9'], population['phi_10'], population['phi_11'], population['phi_12']]
     pop_df['Signal'] = sig
     pop_df['Parameters']= par
-    print(pop_df.head(20))
+#    print(pop_df.head(20))
     
     ######################### random initialization of non-primary formulae + GP_opt  #######################
     pop_ext = {}
     for i in range(11, 51):
-        rand = random.randint(2, 3)
+        random.seed()
+        rand = random.randint(1, 3)
+
         num = random.sample(range(0, 20), 2)
     
         subformula = [pop_df.iloc[num[0]]['Formula'],
@@ -214,32 +218,34 @@ def Initialize(x1_reg_exp,x2_reg_exp,x1_anom_exp,x2_anom_exp,rng):
                 num = random.sample(range(0, len(pop_df)+1), 2)
                 subformula = [pop_df.iloc[num[0]]['Formula'], pop_df.iloc[num[1]]['Formula']]
                 
-            X = GP_opt('until',  [pop_df.iloc[num[0]]['Signal'], pop_df.iloc[num[1]]['Signal']], subformula[0], subformula[1], input1=x1_reg_exp,
-                       input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
+#            X = GP_opt('until',  [pop_df.iloc[num[0]]['Signal'], pop_df.iloc[num[1]]['Signal']], subformula[0], subformula[1], input1=x1_reg_exp,
+#                       input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
+#            pop_ext['phi_' +
+#                    str(i)] = stlcg.Until(subformula[0], subformula[1], interval=[int(X[1]), int(X[1])])
             pop_ext['phi_' +
-                    str(i)] = stlcg.Until(subformula[0], subformula[1], interval=[int(X[1]), int(X[1])])
+                    str(i)] = stlcg.Until(subformula[0], subformula[1])
     
             pop_df = pop_df.append({'Name': 'phi_' + str(i),
                                     'Formula': pop_ext['phi_' +
-                                                       str(i)], 'Subformula': [subformula[0], subformula[1]], 'Signal': [pop_df.iloc[num[0]]['Signal'], pop_df.iloc[num[1]]['Signal']]}, ignore_index=True)
+                                                       str(i)], 'Subformula': [subformula[0], subformula[1]], 'Signal': [pop_df.iloc[num[0]]['Signal'], pop_df.iloc[num[1]]['Signal']],'Parameters': None}, ignore_index=True)
         elif rand == 2:
             pop_ext['phi_' +
                     str(i)] = stlcg.And(subformula[0], subformula[1])
             pop_df = pop_df.append({'Name': 'phi_' + str(i),
                                     'Formula': pop_ext['phi_' +
-                                                       str(i)], 'Subformula': [subformula[0], subformula[1]], 'Signal': [pop_df.iloc[num[0]]['Signal'], pop_df.iloc[num[1]]['Signal']]}, ignore_index=True)
+                                                       str(i)], 'Subformula': [subformula[0], subformula[1]], 'Signal': [pop_df.iloc[num[0]]['Signal'], pop_df.iloc[num[1]]['Signal']], 'Parameters': None}, ignore_index=True)
         elif rand == 3:
             pop_ext['phi_' +
                     str(i)] = stlcg.Or(subformula[0], subformula[1])
             pop_df = pop_df.append({'Name': 'phi_' + str(i),
                                     'Formula': pop_ext['phi_' +
-                                                       str(i)], 'Subformula': [subformula[0], subformula[1]], 'Signal': [pop_df.iloc[num[0]]['Signal'], pop_df.iloc[num[1]]['Signal']]}, ignore_index=True)
+                                                       str(i)], 'Subformula': [subformula[0], subformula[1]], 'Signal': [pop_df.iloc[num[0]]['Signal'], pop_df.iloc[num[1]]['Signal']],'Parameters': None}, ignore_index=True)
         elif rand == 4:
             pop_ext['phi_' +
                     str(i)] = stlcg.Negation(subformula[0])
             pop_df = pop_df.append({'Name': 'phi_' + str(i),
                                     'Formula': pop_ext['phi_' +
-                                                       str(i)], 'Subformula': [subformula[0]], 'Signal': [pop_df.iloc[num[0]]['Signal']]}, ignore_index=True)
+                                                       str(i)], 'Subformula': [subformula[0]], 'Signal': [pop_df.iloc[num[0]]['Signal']],'Parameters': None}, ignore_index=True)
     population = {**population, **pop_ext}
     
     print('Length of DF ---', len(pop_df))
@@ -282,6 +288,7 @@ def fix_IP_anom(signal,l):
     return copy_sig_anom
 
 def compute_rob(formula, signal, pars):
+
     rob_reg_all = np.empty(0)
     rob_anom_all = np.empty(0)
     print('fromula: ', formula, 'signal: ', signal)
@@ -293,34 +300,60 @@ def compute_rob(formula, signal, pars):
         
         try:
             if isinstance(formula, stlcg.Always):
-                rob_reg = float(min(formula.robustness(IP_reg[0])[pars[0]:pars[1]]))
-                rob_anom = float(min(formula.robustness(IP_anom[0])[pars[0]:pars[1]]))
+                robR = formula.robustness(IP_reg[0])[pars[0]:pars[1]]
+                robA = formula.robustness(IP_anom[0])[pars[0]:pars[1]]
+                rob_reg = float(min(robR))
+                rob_anom = float(min(robA))
             elif isinstance(formula, stlcg.Eventually):
-                rob_reg = float(max(formula.robustness(IP_reg[0])[pars[0]:pars[1]]))
-                rob_anom = float(max(formula.robustness(IP_anom[0])[pars[0]:pars[1]]))
+                robR = formula.robustness(IP_reg[0])[pars[0]:pars[1]]
+                robA = formula.robustness(IP_anom[0])[pars[0]:pars[1]]
+                rob_reg = float(max(robR))
+                rob_anom = float(max(robA))
             else:
-                rob_reg = float(min(formula.robustness(IP_reg[0])))
-                rob_anom = float(min(formula.robustness(IP_anom[0])))
+                robR = formula.robustness(IP_reg[0])
+                robA = formula.robustness(IP_anom[0])
+                rob_reg = float(min(robR))
+                rob_anom = float(min(robA))
         except:
             if isinstance(formula, stlcg.Always):
-                rob_reg = float(min(formula.robustness(IP_reg)[pars[0]:pars[1]]))
-                rob_anom = float(min(formula.robustness(IP_anom)[pars[0]:pars[1]]))
+                robR = formula.robustness(IP_reg)[pars[0]:pars[1]]
+                robA = formula.robustness(IP_anom)[pars[0]:pars[1]]
+                rob_reg = float(min(robR))
+                rob_anom = float(min(robA))
             elif isinstance(formula, stlcg.Eventually):
-                rob_reg = float(max(formula.robustness(IP_reg)[pars[0]:pars[1]]))
-                rob_anom = float(max(formula.robustness(IP_anom)[pars[0]:pars[1]]))
+                robR = formula.robustness(IP_reg)[pars[0]:pars[1]]
+                robA = formula.robustness(IP_anom)[pars[0]:pars[1]]
+                rob_reg = float(max(robR))
+                rob_anom = float(max(robA))
             else:
-                rob_reg = float(min(formula.robustness(IP_reg)))
-                rob_anom = float(min(formula.robustness(IP_anom)))
-                
+                robR = formula.robustness(IP_reg)
+                robA = formula.robustness(IP_anom)
+                rob_reg = float(min(robR))
+                rob_anom = float(min(robA))
+#        plt.plot(robR.reshape(61,1)) 
+#        plt.show()
+#        plt.plot(robA.reshape(61,1)) 
+#        plt.show()
         rob_reg_all = np.append(rob_reg_all, rob_reg)
         rob_anom_all = np.append(rob_anom_all, rob_anom)
+
         
-           
-    pos = len(list(filter(lambda x: (x >= 0), rob_reg_all)))
-    neg = len(list(filter(lambda x: (x < 0), rob_anom_all)))
+
+        
+#    import time
+#    print ('Waiting 5 seconds before continuing')
+#    time.sleep(15)    
+    for i in rob_reg_all:
+        if i>= 0: pos +=1 
+    for i in rob_anom_all:
+         if i< 0:neg +=1
+        
+#    pos = len(list(filter(lambda x: (x >= 0), rob_reg_all)))
+#    neg = len(list(filter(lambda x: (x < 0), rob_anom_all)))
 
     
     results = [pos, neg]
+    print(results)
     rob_diff = np.absolute(np.average(rob_reg_all) - np.average(rob_anom_all))
     
     return rob_diff,results
@@ -336,12 +369,12 @@ def formula_size(formula):
     return count
 
 
-def fitness_func(rob_difference, size):
+def fitness_func(results, size):
     if size < 3:
-        Fitness_score = rob_difference
+        Fitness_score = results[1]+ results[0]
     else:
         # decrease robustness by (size-2)X10 % for sizes greater than 2
-        Fitness_score = rob_difference*(1-(size-2))/10
+        Fitness_score = (results[1]+ results[0])*(1-(size-3)/10)
     return Fitness_score
     
  #####################      Rearrange  population with descending order of fitness  ############
@@ -359,6 +392,7 @@ def rank(pop_df_evaluated):
 ###################      Compute robustness, size, and fitness       ###########################
 
 def evaluate(pop_df):
+    print('-------------Evaluating formulae in population--------------')
     pop_rob = []
     pop_size = []
     pop_fit = []
@@ -366,18 +400,17 @@ def evaluate(pop_df):
     for i in range(len(pop_df)):
 
         formula = pop_df.iloc[i]['Formula']
-        subformula = pop_df.iloc[i]['Subformula']
         signal = pop_df.iloc[i]['Signal']
         pars = pop_df.iloc[i]['Parameters']
-        
         rob_diff, results = compute_rob(formula, signal, pars)
+        print('Results',results)
         pop_rob.append(rob_diff)
         res.append(results)
         pop_size.append(formula_size(formula))
-        print('Size: ', formula_size(formula))
-        fitness = fitness_func(pop_rob[-1], pop_size[-1])
+#        print('Size: ', formula_size(formula))
+        fitness = fitness_func(res[-1], pop_size[-1])
         pop_fit.append(fitness)
-        print('Fitness Score: ', pop_fit[-1])
+#        print('Fitness Score: ', pop_fit[-1])
     
     
     ####################          Update dataframe        ##########################
@@ -392,9 +425,10 @@ def evaluate(pop_df):
 
 ####################       New generation parents (Top 25)   ####################
 def topHalf(pop_df_evaluated):
+    print('-------------Top half of population--------------')
     pop_df_ranked = rank(pop_df_evaluated)
     pop_df_new = pop_df_ranked.head(25)
-    print(pop_df_new.head(10))
+#    print(pop_df_new.head(10))
     return pop_df_new
 
 ###############################   Mutation and Crossover Functions   ###########
@@ -403,19 +437,29 @@ def Mutation(index, pop_df_new):
     formula = pop_df_new.iloc[index]['Formula']
     subformula = pop_df_new.iloc[index]['Subformula']
     signal = pop_df_new.iloc[index]['Signal']
-    print(type(formula),formula,subformula,signal)
+    print(formula,subformula,signal)
     # alter temporal operators
     if isinstance(formula, stlcg.Always):
+        if isinstance(subformula, stlcg.Eventually):
+            phi = stlcg.Negation(subformula)
+            param = None
+        else:
         # change to eventually
-        X = GP_opt('eventually', signal, subformula, input1=x1_reg_exp,input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
-        phi = stlcg.Eventually(subformula, interval=[int(X[0]), int(X[1])])
-        param = [int(X[0]), int(X[1])]
+            X = GP_opt('eventually', signal, subformula, input1=x1_reg_exp,input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
+            phi = stlcg.Eventually(subformula, interval=[int(X[0]), int(X[1])])
+            param = [int(X[0]), int(X[1])]
+        
     elif isinstance(formula, stlcg.Eventually):
-        X = GP_opt('always', signal, subformula, input1=x1_reg_exp,
-                   input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
-        # change to Always
-        phi = stlcg.Always(subformula, interval=[int(X[0]), int(X[1])])
-        param = [int(X[0]), int(X[1])]
+        if isinstance(subformula, stlcg.Always):
+            phi = stlcg.Negation(subformula)
+            param = None
+        else:
+            X = GP_opt('always', signal, subformula, input1=x1_reg_exp,
+                       input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
+            # change to Always
+            phi = stlcg.Always(subformula, interval=[int(X[0]), int(X[1])])
+            param = [int(X[0]), int(X[1])]
+            
     elif isinstance(formula, stlcg.Until):
         X = GP_opt('until', signal, subformula[1],subformula[0], input1=x1_reg_exp,
                    input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
@@ -425,9 +469,11 @@ def Mutation(index, pop_df_new):
     elif isinstance(formula, stlcg.And):
         # change to or
         phi = stlcg.Or(subformula[0], subformula[1])
+        param = None
     elif isinstance(formula, stlcg.Or):
         # change to and
         phi = stlcg.And(subformula[0], subformula[1])
+        param = None
     elif isinstance(formula, stlcg.LessThan):
         # change to >
         X = GP_opt('greaterthan', signal, input1=x1_reg_exp,
@@ -442,6 +488,7 @@ def Mutation(index, pop_df_new):
         phi = stlcg.LessThan(subformula,X[0])
         param = [X[0]]
         
+    print(phi)    
     return phi, subformula, signal, param
 
 
@@ -450,10 +497,10 @@ def Crossover(index1,index2,pop_df_new):
     formula2 = pop_df_new.iloc[index2]['Formula']
     subformula1 = pop_df_new.iloc[index1]['Subformula']
     subformula2 = pop_df_new.iloc[index2]['Subformula']
-    signal1 = pop_df_new.iloc[index1]['signal']
-    signal2 = pop_df_new.iloc[index2]['signal']
+    signal1 = pop_df_new.iloc[index1]['Signal']
+    signal2 = pop_df_new.iloc[index2]['Signal']
     
-    print(type(formula1),formula1,subformula1,signal1)
+    print(formula1,formula2)
     
     if isinstance(formula1, stlcg.And) and isinstance(formula2, stlcg.And):
         # flip subformula
@@ -463,39 +510,65 @@ def Crossover(index1,index2,pop_df_new):
         # flip subformula
         phi1 = stlcg.Or(subformula1[0], subformula2[1])
         phi2 = stlcg.Or(subformula2[0], subformula1[1])
+    elif isinstance(formula1, stlcg.Or) and isinstance(formula2, stlcg.And):
+        # flip subformula
+        phi1 = stlcg.Or(subformula1[0], subformula2[1])
+        phi2 = stlcg.And(subformula2[0], subformula1[1])
+    elif isinstance(formula1, stlcg.And) and isinstance(formula2, stlcg.Or):
+        # flip subformula
+        phi1 = stlcg.And(subformula1[0], subformula2[1])
+        phi2 = stlcg.Or(subformula2[0], subformula1[1])
+    
+    print(phi1 , phi2)
     return phi1,phi2,subformula1[0],subformula2[1],subformula2[0],subformula1[1],signal1[0],signal2[1],signal2[0],signal1[1]
 
 ################################    GA    ############################################
 def GA(x1_reg_exp,x2_reg_exp,x1_anom_exp,x2_anom_exp):
+
     pop_df = Initialize(x1_reg_exp,x2_reg_exp,x1_anom_exp,x2_anom_exp,rng)
     pop_df_evaluated = evaluate(pop_df)
     pop_df_new = topHalf(pop_df_evaluated)
-    
-    
-    while pop_df_new.iloc[1]['Results'][0]!=1000 and pop_df_new.iloc[1]['Results'][1]!=1000:
+    count = 0
+    while pop_df_new.iloc[0]['Results'][0]!=1000 or pop_df_new.iloc[0]['Results'][1]!=1000:
+        
+        print('-------------Genetic Algorithm iteration ',count,'--------------') 
         pop_df_sechalf = pd.DataFrame(columns=['Name', 'Formula', 'Subformula','Signal'])
         for i in range(26, 51):
-            num = random.sample(range(0, 25), 2)
+            print(i)
+            random.seed()
+            num = random.sample(range(0,25), 2)
+            print('Random formula numbers are:', num)
+            
             if ((isinstance(pop_df_new.iloc[num[0]]['Formula'], stlcg.And) or isinstance(pop_df_new.iloc[num[0]]['Formula'], stlcg.Or)) and (isinstance(pop_df_new.iloc[num[1]]['Formula'], stlcg.And) or isinstance(pop_df_new.iloc[num[1]]['Formula'], stlcg.Or))):
-                phi, subformula, signal, param = Crossover(num[0],num[1])
+                print('*Crossover*')
+                phi1,phi2,subformula1_0,subformula2_1,subformula2_0,subformula1_1,signal1_0,signal2_1,signal2_0,signal1_1 = Crossover(num[0],num[1],pop_df_new)
                 
                 pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i),
-                                        'Formula': phi, 
-                                        'Subformula': [subformula], 
-                                        'Signal': [signal]}, ignore_index=True)     
+                                        'Formula': phi1, 
+                                        'Subformula': [subformula1_0,subformula2_1], 
+                                        'Signal': [signal1_0,signal2_1]}, ignore_index=True)  
+                pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i+1),
+                                        'Formula': phi1, 
+                                        'Subformula': [subformula2_0,subformula1_1], 
+                                        'Signal': [signal2_0,signal1_1]}, ignore_index=True)  
             else:
-                phi, subformula, signal, param = Mutation(num[0])
+                print('*Mutation*')
+                phi, subformula, signal, param = Mutation(num[0], pop_df_new)
                 
                 pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i),
                                         'Formula': phi, 
                                         'Subformula': [subformula], 
                                         'Signal': [signal]}, ignore_index=True)
-        
+            
         pd_new = pd.concat([pop_df_new, pop_df_sechalf], ignore_index=True, axis=0)
         pop_df_new = topHalf(pd_new)
-        print(pop_df_new.iloc[1]['Results'])
+        print(pop_df_new.iloc[0]['Results'])
+        print(pop_df_new.iloc[0])
+        count+=1 
         
-    pop_df_final = pop_df_new    
+    pop_df_final = pop_df_new  
+    print('----------Final Population-----------\n',pop_df_final.head(10))
+    print(pop_df_final.iloc[0])
     return pop_df_final
         
         
