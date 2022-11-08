@@ -69,124 +69,147 @@ def Initialize(x1_reg_exp,x2_reg_exp,x1_anom_exp,x2_anom_exp,rng):
     pop_df = pd.DataFrame()
     par = []
     sig = []
+    subf = []
     
     
     population = {}
     sig.append('x')
+    subf.append(x1_reg_exp[0]) 
     X = GP_opt('lessthan', sig[-1], input1=x1_reg_exp, input2=x2_reg_exp,
                input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([X[0]])
     population['phi_1'] = x1_reg_exp[0] < X[0]
     sig.append('x')
+    subf.append(x1_reg_exp[0])
     X = GP_opt('greaterthan', sig[-1], input1=x1_reg_exp, input2=x2_reg_exp,
                input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([X[0]])
     population['phi_2'] = x1_reg_exp[0] > X[0]
+    
     sig.append('y')
+    subf.append(x2_reg_exp[0])
     X = GP_opt('lessthan', sig[-1], input1=x1_reg_exp, input2=x2_reg_exp,
                input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([X[0]])
     population['phi_3'] = x2_reg_exp[0] < X[0]
+    
     sig.append('y')
+    subf.append(x2_reg_exp[0])
     X = GP_opt('greaterthan', sig[-1], input1=x1_reg_exp, input2=x2_reg_exp,
                input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([X[0]])
     population['phi_4'] = x2_reg_exp[0] > X[0]
-    
+  ##################################################################################################      
     sig.append('x')
+    subf.append(population['phi_1'] )
     X = GP_opt('always', sig[-1], population['phi_1'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_5'] = stlcg.Always(
         population['phi_1'], interval=[int(X[0]), int(X[1])])
     sig.append('x')
+    subf.append(population['phi_2'] )
     X = GP_opt('always', sig[-1], population['phi_2'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_6'] = stlcg.Always(
         population['phi_2'], interval=[int(X[0]), int(X[1])])
     sig.append('y')
+    subf.append(population['phi_3'] )
     X = GP_opt('always', sig[-1], population['phi_3'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_7'] = stlcg.Always(
         population['phi_3'], interval=[int(X[0]), int(X[1])])
     sig.append('y')
+    subf.append(population['phi_4'] )
     X = GP_opt('always', sig[-1], population['phi_4'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_8'] = stlcg.Always(
         population['phi_4'], interval=[int(X[0]), int(X[1])])
-    
+  ##################################################################################################      
     sig.append('x')
+    subf.append(population['phi_1'] )
     X = GP_opt('eventually', sig[-1], population['phi_1'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_9'] = stlcg.Eventually(
         population['phi_1'], interval=[int(X[0]), int(X[1])])
     sig.append('x')
+    subf.append(population['phi_2'] )
     X = GP_opt('eventually', sig[-1], population['phi_2'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_10'] = stlcg.Eventually(
         population['phi_2'], interval=[int(X[0]), int(X[1])])
     sig.append('y')
+    subf.append(population['phi_3'] )
     X = GP_opt('eventually', sig[-1], population['phi_3'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_11'] = stlcg.Eventually(
         population['phi_3'], interval=[int(X[0]), int(X[1])])
     sig.append('y')
+    subf.append(population['phi_4'] )
     X = GP_opt('eventually', sig[-1], population['phi_4'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_12'] = stlcg.Eventually(
         population['phi_4'], interval=[int(X[0]), int(X[1])])
-    
+  ##################################################################################################      
     sig.append('x')
+    subf.append( [population['phi_9'], [subf[8]]] )
     X = GP_opt('always', sig[-1], population['phi_9'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_13'] = stlcg.Always(
         population['phi_9'], interval=[int(X[0]), int(X[1])])
     sig.append('x')
+    subf.append( [population['phi_10'],[subf[9]]] )
     X = GP_opt('always', sig[-1], population['phi_10'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_14'] = stlcg.Always(
         population['phi_10'], interval=[int(X[0]), int(X[1])])
     sig.append('y')
+    subf.append( [population['phi_11'],[subf[10]]] )
     X = GP_opt('always', sig[-1], population['phi_11'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_15'] = stlcg.Always(
         population['phi_11'], interval=[int(X[0]), int(X[1])])
     sig.append('y')
+    subf.append( [population['phi_12'],[subf[11]]] )
     X = GP_opt('always', sig[-1], population['phi_12'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_16'] = stlcg.Always(
         population['phi_12'], interval=[int(X[0]), int(X[1])])
-    
+ ##################################################################################################   
     sig.append('x')
+    subf.append( [population['phi_5'],[subf[8]]] )
     X = GP_opt('eventually', sig[-1], population['phi_5'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_17'] = stlcg.Eventually(
         population['phi_5'], interval=[int(X[0]), int(X[1])])
     sig.append('x')
+    subf.append( [population['phi_6'],[subf[9]]] )
     X = GP_opt('eventually', sig[-1], population['phi_6'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_18'] = stlcg.Eventually(
         population['phi_6'], interval=[int(X[0]), int(X[1])])
     sig.append('y')
+    subf.append( [population['phi_7'],[subf[10]]] )
     X = GP_opt('eventually', sig[-1], population['phi_7'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
     population['phi_19'] = stlcg.Eventually(
         population['phi_7'], interval=[int(X[0]), int(X[1])])
     sig.append('y')
+    subf.append( [population['phi_8'],[subf[11]]] )
     X = GP_opt('eventually', sig[-1], population['phi_8'], input1=x1_reg_exp,
                input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
     par.append([int(X[0]), int(X[1])])
@@ -196,12 +219,10 @@ def Initialize(x1_reg_exp,x2_reg_exp,x1_anom_exp,x2_anom_exp,rng):
     
     pop_df['Name'] = population.keys()
     pop_df['Formula'] = population.values()
-    pop_df['Subformula'] = [x1_reg_exp[0], x1_reg_exp[0], x2_reg_exp[0], x2_reg_exp[0], population['phi_1'], population['phi_2'], population['phi_3'], population['phi_4'], population['phi_1'], population['phi_2'],
-                            population['phi_3'], population['phi_4'], population['phi_5'], population['phi_6'], population['phi_7'], population['phi_8'], population['phi_9'], population['phi_10'], population['phi_11'], population['phi_12']]
+    pop_df['Subformula'] = subf
     pop_df['Signal'] = sig
     pop_df['Parameters']= par
-#    print(pop_df.head(20))
-    
+    print(pop_df.iloc[len(pop_df)-1])   
     ######################### random initialization of non-primary formulae + GP_opt  #######################
     pop_ext = {}
     for i in range(11, 51):
@@ -215,7 +236,7 @@ def Initialize(x1_reg_exp,x2_reg_exp,x1_anom_exp,x2_anom_exp,rng):
         
         if rand == 1:
             while pop_df.iloc[num[0]]['Signal'] == pop_df.iloc[num[1]]['Signal']:
-                num = random.sample(range(0, len(pop_df)+1), 2)
+                num = random.sample(range(0, len(pop_df)), 2)
                 subformula = [pop_df.iloc[num[0]]['Formula'], pop_df.iloc[num[1]]['Formula']]
                 
 #            X = GP_opt('until',  [pop_df.iloc[num[0]]['Signal'], pop_df.iloc[num[1]]['Signal']], subformula[0], subformula[1], input1=x1_reg_exp,
@@ -562,7 +583,7 @@ def GA(x1_reg_exp,x2_reg_exp,x1_anom_exp,x2_anom_exp):
             
         pd_new = pd.concat([pop_df_new, pop_df_sechalf], ignore_index=True, axis=0)
         pop_df_new = topHalf(pd_new)
-        print(pop_df_new.iloc[0]['Results'])
+        print(pop_df_new.iloc[:10]['Results'])
         print(pop_df_new.iloc[0])
         count+=1 
         
