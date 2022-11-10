@@ -10,104 +10,191 @@ import copy
 
 
 def GP_opt(*subfor, **inputs):
+    def make_al(subformula,**parss): 
+        c = parss['for1'][0]
+        t1 = parss['for1'][1]
+        t2 = parss['for1'][2]
+        t3 = parss['for1'][3]
+        t4 = parss['for1'][4]
+        N = parss['num']         
+        if isinstance(subformula[0], stlcg.Eventually):
+            if isinstance(subformula[1][0], stlcg.GreaterThan):
+                phi = stlcg.Always(stlcg.Eventually(subfor[1][N] > c, interval = [t1,t2]), interval = [t3,t4])
+            elif isinstance(subformula[1][0], stlcg.LessThan):
+                phi = stlcg.Always(stlcg.Eventually(subfor[1][N] < c, interval = [t1,t2]), interval = [t3,t4])
+        elif isinstance(subformula[0], (stlcg.LessThan, stlcg.GreaterThan)):
+            c = parss['for1'][0]
+            t1 = parss['for1'][1]
+            t2 = parss['for1'][2]
+            if isinstance(subformula[0], stlcg.GreaterThan):
+                phi = stlcg.Always(subfor[1][N] > c, interval = [t1,t2])
+            elif isinstance(subformula[0], stlcg.LessThan):
+                phi = stlcg.Always(subfor[1][N] < c, interval = [t1,t2])
+        return phi
+    
+    def make_ev(subformula,**parss):
+        c= parss['for1'][0]
+        t1 = parss['for1'][1]
+        t2 = parss['for1'][2]
+        t3 = parss['for1'][3]
+        t4 = parss['for1'][4]
+        N = parss['num']
+        if isinstance(subformula[0], stlcg.Always):
+            if isinstance(subformula[1][0], stlcg.GreaterThan):
+                phi = stlcg.Eventually(stlcg.Always(subfor[1][N] > c, interval = [t1,t2]), interval = [t3,t4])
+            elif isinstance(subformula[1][0], stlcg.LessThan):
+                phi = stlcg.Eventually(stlcg.Always(subfor[1][N] < c, interval = [t1,t2]), interval = [t3,t4])
+                
+        elif isinstance(subformula[0], (stlcg.LessThan, stlcg.GreaterThan)):
+            c = parss['for1'][0]
+            t1 = parss['for1'][1]
+            t2 = parss['for1'][2]
+
+            if isinstance(subformula[0], stlcg.GreaterThan):
+                phi = stlcg.Eventually(subfor[1][N] > c, interval = [t1,t2])
+            else:
+                phi = stlcg.Eventually(subfor[1][N] < c, interval = [t1,t2])
+        return phi  
+    
+    def make_un(subformula, **parsUntil):
+        
+        if isinstance(subformula[0][0], stlcg.Always):
+            phi1 = make_al(subformula[0][1],parsUntil['for1'],num=0)
+            if isinstance(subformula[1][0], stlcg.Always):
+                phi2 = make_al(subformula[1][1], parsUntil['for2'], num=1)
+            elif isinstance(subformula[1][0], stlcg.Eventually):
+                phi2 = make_ev(subformula[1][1],parsUntil['for2'], num=1)
+            elif isinstance(subformula[1][0], (stlcg.GreaterThan, stlcg.LessThan)):
+                if isinstance (subformula[1][0], stlcg.GreaterThan):            
+                    phi2 = subfor[1][1] > parsUntil['for2'][0]
+                else:
+                    phi2 = subfor[1][1] < parsUntil['for2'][0]
+        elif isinstance(subformula[0][0], stlcg.Eventually):
+            phi1 = make_ev(subformula[0][1],parsUntil['for1'], num=0)
+            if isinstance(subformula[1][0], stlcg.Always):
+                phi2 = make_al(subformula[1][1],  parsUntil['for2'], num=1)
+            elif isinstance(subformula[1][0], stlcg.Eventually):
+                phi2 = make_ev(subformula[1][1],parsUntil['for2'], num=1)
+            elif isinstance(subformula[1][0], (stlcg.GreaterThan, stlcg.LessThan)):
+                if isinstance (subformula[1][0], stlcg.GreaterThan):            
+                    phi2 = subfor[1][1] > parsUntil['for2'][0]
+                else:
+                    phi2 = subfor[1][1] < parsUntil['for2'][0]
+                    
+        elif isinstance(subformula[0][0], (stlcg.LessThan, stlcg.GreaterThan)):
+            if isinstance (subformula[0][0], stlcg.GreaterThan):            
+                phi1 = subfor[1][0] > parsUntil['for1'][0]
+            else:
+                phi1 = subfor[1][0] < parsUntil['for1'][0]
+                    
+            if isinstance(subformula[1][0], stlcg.Always):
+                phi2 = make_al(subformula[1][1], parsUntil['for2'], num=1)
+            elif isinstance(subformula[1][0], stlcg.Eventually):
+                phi2 = make_ev(subformula[1][1], parsUntil['for2'] , num=1)
+            elif isinstance(subformula[1][0], (stlcg.GreaterThan, stlcg.LessThan)):
+                if isinstance (subformula[1][0], stlcg.GreaterThan):            
+                    phi2 = subfor[1][1] > parsUntil['for2'][0]
+                else:
+                    phi2 = subfor[1][1] < parsUntil['for2'][0]
+                    
+        phi = stlcg.Until(phi1,phi2)
+        return phi
+
     def pars(x):
-        t1 = 0
-        t2 = inf
+        if len(subfor[1]) ==1:
+            x = x.reshape(1, 5)
+            c= float(x[:, 0])
+            t1 = int(x[:, 1])
+            t2 = int(x[:, 2])
+            t3 = int(x[:, 3])
+            t4 = int(x[:, 4])
+        else:
+            x = x.reshape(1, 10)
+            c= float(x[:, 0])
+            t1 = int(x[:, 1])
+            t2 = int(x[:, 2])
+            t3 = int(x[:, 3])
+            t4 = int(x[:, 4])
+            
+            c_2= float(x[:, 5])
+            t1_2 = int(x[:, 6])
+            t2_2 = int(x[:, 7])
+            t3_2 = int(x[:, 8])
+            t4_2 =  int(x[:, 9])
+               
+        print(subfor)
         if subfor[0].lower() == 'always':
-            x = x.reshape(1, 2)
-            t1 = int(x[:, 0])
-            t2 = int(x[:, 1])
-            phi = stlcg.Always(subfor[2], interval=[t1, t2])
+            phi = make_al(subfor[2], for1 =  [c,t1,t2,t3,t4], num = 0)
+
         elif subfor[0].lower() == 'eventually':
-            x = x.reshape(1, 2)
-            t1 = int(x[:, 0])
-            t2 = int(x[:, 1])
-            phi = stlcg.Eventually(subfor[2], interval=[t1, t2])
-#        elif subfor[0].lower() == 'until':
-#            x = x.reshape(1, 2)
-#            t1 = int(x[:, 0])
-#            t2 = int(x[:, 1])
-#            phi = stlcg.Until(subfor[2], subfor[3], interval=[t1, t2])
+            phi = make_ev(subfor[2],for1 =  [c,t1,t2,t3,t4], num = 0)
+            
+        elif subfor[0].lower() == 'until':
+            phi = make_un(subfor[2], for1 =  [c,t1,t2,t3,t4], for2 =  [c_2,t1_2,t2_2,t3_2,t4_2])
             
         elif subfor[0].lower() == 'lessthan':
-            c = torch.from_numpy(x)
-            if subfor[1].lower() == 'x1':
-                phi = inputs['input1'][0] < c
-            else:
-                phi = inputs['input2'][0] < c
+            phi = subfor[1][0] < c
 
         elif subfor[0].lower() == 'greaterthan':
-            c = torch.from_numpy(x)
-            if subfor[1].lower() == 'x1':
-                phi = inputs['input1'][0] > c
-            else:
-                phi = inputs['input2'][0] > c
+            phi = subfor[1][0] > c
 
+        print('phi : ',phi)
+        
         rob_reg_all = np.empty(0)
         rob_anom_all = np.empty(0)
         
-        
-        
+
         def fix_IP_reg(signal,l):  
-            if isinstance(signal, str):
-                signal = [signal]
-            
+          
             copy_sig = copy.deepcopy(signal)      
-            copy_sig_reg = tuple(inputs['input1'][l] if not isinstance(j,list) and j == 'x' else inputs['input2'][l] if not isinstance(j,list) and j == 'y'
-                        else(tuple(inputs['input1'][l] if not isinstance(k,list) and k == 'x' else inputs['input2'][l] if not isinstance(k,list) and k == 'y'
-                            else (tuple(tuple(tuple(tuple(tuple(tuple(tuple(tuple(g) if not isinstance(g,list) else inputs['input1'][l] if g == 'x' else inputs['input2'][l] for g in n)
-                                if isinstance(n,list) else inputs['input1'][l] if n == 'x' else inputs['input2'][l] for n in v)
-                                    if isinstance(v,list) else inputs['input1'][l] if v == 'x' else inputs['input2'][l] for v in w)
-                                        if isinstance(w,list)  else inputs['input1'][l] if w == 'x' else inputs['input2'][l] for w in s)
-                                            if isinstance(s,list)  else inputs['input1'][l] if s == 'x' else inputs['input2'][l] for s in z)
-                                                if isinstance(z,list)  else inputs['input1'][l] if z == 'x' else inputs['input2'][l] for z in i)
-                                                    if isinstance(i,list)  else inputs['input1'][l] if i == 'x' else inputs['input2'][l] for i in k)) for k in j)) for j in copy_sig)
+            copy_sig_reg = tuple(inputs['input1'][l] if not isinstance(j,list) and j == inputs['input1'][0] else inputs['input2'][l] if not isinstance(j,list) and j == inputs['input2'][0]
+                        else(tuple(inputs['input1'][l] if not isinstance(k,list) and k == inputs['input1'][0] else inputs['input2'][l] if not isinstance(k,list) and k ==  inputs['input2'][0]
+                            else (tuple(tuple(tuple(tuple(tuple(tuple(tuple(tuple(g) if not isinstance(g,list) else inputs['input1'][l] if g == inputs['input1'][0] else inputs['input2'][l] for g in n)
+                                if isinstance(n,list) else inputs['input1'][l] if n == inputs['input1'][0] else inputs['input2'][l] for n in v)
+                                    if isinstance(v,list) else inputs['input1'][l] if v == inputs['input1'][0] else inputs['input2'][l] for v in w)
+                                        if isinstance(w,list)  else inputs['input1'][l] if w == inputs['input1'][0] else inputs['input2'][l] for w in s)
+                                            if isinstance(s,list)  else inputs['input1'][l] if s == inputs['input1'][0] else inputs['input2'][l] for s in z)
+                                                if isinstance(z,list)  else inputs['input1'][l] if z == inputs['input1'][0] else inputs['input2'][l] for z in i)
+                                                    if isinstance(i,list)  else inputs['input1'][l] if i == inputs['input1'][0] else inputs['input2'][l] for i in k)) for k in j)) for j in copy_sig)
+            if len(copy_sig_reg) == 1:
+                copy_sig_reg = copy_sig_reg[0]
+                
             return copy_sig_reg
         
         def fix_IP_anom(signal,l):  
-            if isinstance(signal, str):
-                signal = [signal]
             
             copy_sig = copy.deepcopy(signal)      
-            copy_sig_anom = tuple(inputs['input3'][l] if not isinstance(j,list) and j == 'x' else inputs['input4'][l] if not isinstance(j,list) and j == 'y'
-                        else(tuple(inputs['input3'][l] if not isinstance(k,list) and k == 'x' else inputs['input4'][l] if not isinstance(k,list) and k == 'y'
-                            else (tuple(tuple(tuple(tuple(tuple(tuple(tuple(tuple(g) if not isinstance(g,list) else inputs['input3'][l] if g == 'x' else inputs['input4'][l] for g in n)
-                                if isinstance(n,list) else inputs['input3'][l] if n == 'x' else inputs['input4'][l] for n in v)
-                                    if isinstance(v,list) else inputs['input3'][l] if v == 'x' else inputs['input4'][l] for v in w)
-                                        if isinstance(w,list)  else inputs['input3'][l] if w == 'x' else inputs['input4'][l] for w in s)
-                                            if isinstance(s,list)  else inputs['input3'][l] if s == 'x' else inputs['input4'][l] for s in z)
-                                                if isinstance(z,list)  else inputs['input3'][l] if z == 'x' else inputs['input4'][l] for z in i)
-                                                    if isinstance(i,list)  else inputs['input3'][l] if i == 'x' else inputs['input4'][l] for i in k)) for k in j)) for j in copy_sig)
+            copy_sig_anom = tuple(inputs['input3'][l] if not isinstance(j,list) and j ==  inputs['input1'][0] else inputs['input4'][l] if not isinstance(j,list) and j == inputs['input2'][0]
+                        else(tuple(inputs['input3'][l] if not isinstance(k,list) and k == inputs['input1'][0] else inputs['input4'][l] if not isinstance(k,list) and k == inputs['input2'][0]
+                            else (tuple(tuple(tuple(tuple(tuple(tuple(tuple(tuple(g) if not isinstance(g,list) else inputs['input3'][l] if g == inputs['input1'][0] else inputs['input4'][l] for g in n)
+                                if isinstance(n,list) else inputs['input3'][l] if n == inputs['input1'][0] else inputs['input4'][l] for n in v)
+                                    if isinstance(v,list) else inputs['input3'][l] if v == inputs['input1'][0] else inputs['input4'][l] for v in w)
+                                        if isinstance(w,list)  else inputs['input3'][l] if w == inputs['input1'][0] else inputs['input4'][l] for w in s)
+                                            if isinstance(s,list)  else inputs['input3'][l] if s == inputs['input1'][0] else inputs['input4'][l] for s in z)
+                                                if isinstance(z,list)  else inputs['input3'][l] if z == inputs['input1'][0] else inputs['input4'][l] for z in i)
+                                                    if isinstance(i,list)  else inputs['input3'][l] if i == inputs['input1'][0] else inputs['input4'][l] for i in k)) for k in j)) for j in copy_sig)
+            if len(copy_sig_anom) == 1:
+                copy_sig_anom = copy_sig_anom[0]
+                
             return copy_sig_anom
         
-#        print('Phi:', phi)
-        
-        if t1 < t2:
+        if t1 < t2 and t3<t4:
             for i in range(len(inputs['input1'])):
+                
                 signal_reg = fix_IP_reg(subfor[1],i)
                 signal_anom = fix_IP_anom(subfor[1],i)
-                try:
-                    if isinstance(phi,stlcg.Always):
-                        rob_reg = float(min(phi.robustness(signal_reg[0])[t1:t2]))
-                        rob_anom = float(min(phi.robustness(signal_reg[0])[t1:t2]))
-                    elif isinstance(phi,stlcg.Eventually):
-                        rob_reg = float(max(phi.robustness(signal_reg[0])[t1:t2]))
-                        rob_anom = float(max(phi.robustness(signal_anom[0])[t1:t2]))
-                    else:
-                        rob_reg = min(phi.robustness(signal_reg[0]))
-                        rob_anom = min(phi.robustness(signal_anom[0]))
-                except:
-                    if isinstance(phi,stlcg.Always):
-                        rob_reg = float(min(phi.robustness(signal_reg)[t1:t2]))
-                        rob_anom = float(min(phi.robustness(signal_anom)[t1:t2]))
 
-                    elif isinstance(phi,stlcg.Eventually):
-                        rob_reg = float(max(phi.robustness(signal_reg)[t1:t2]))
-                        rob_anom = float(max(phi.robustness(signal_anom)[t1:t2]))
+                if isinstance(phi, stlcg.Always):
+                    rob_reg = float(min(phi.robustness(signal_reg)[t1:t2]))
+                    rob_anom = float(min(phi.robustness(signal_anom)[t1:t2]))
 
-                    else:
-                        rob_reg = min(phi.robustness(signal_reg))
-                        rob_anom = min(phi.robustness(signal_anom))
+                elif isinstance(phi,stlcg.Eventually):
+                    rob_reg = float(max(phi.robustness(signal_reg)[t1:t2]))
+                    rob_anom = float(max(phi.robustness(signal_anom)[t1:t2]))
+
+                else:
+                    rob_reg = min(phi.robustness(signal_reg))
+                    rob_anom = min(phi.robustness(signal_anom))
                 
                 rob_reg_all = np.append(rob_reg_all, rob_reg)
                 rob_anom_all = np.append(rob_anom_all, rob_anom)
@@ -127,19 +214,67 @@ def GP_opt(*subfor, **inputs):
         return -gap
 
 
-
-    if subfor[0].lower() == 'lessthan' or subfor[0].lower() == 'greaterthan':
-        if subfor[1].lower == 'x1':
-            space = [{'name': 'c', 'type': 'continuous', 'domain': (
-                0.5*inputs['rng'][0][0], inputs['rng'][0][1])}]
+    if len(subfor[1]) == 1 :
+        if subfor[1][0] == inputs['input1'][0] :
+            space = [{'name': 'c', 'type': 'continuous', 'domain':(min(inputs['rng'][0][0],inputs['rng'][2][0]),max(inputs['rng'][0][1],inputs['rng'][2][1]))},
+                 {'name': 't1', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                 {'name': 't2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                 {'name': 't3', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                 {'name': 't4', 'type': 'continuous', 'domain': (1, inputs['rng'][4])}]
         else:
-            space = [{'name': 'c', 'type': 'continuous', 'domain': (
-                0.5*inputs['rng'][1][0], inputs['rng'][1][1])}]
-
+            space = [{'name': 'c', 'type': 'continuous', 'domain': (min(inputs['rng'][1][0],inputs['rng'][3][0]),max(inputs['rng'][1][1],inputs['rng'][3][1]))},
+                    {'name': 't1', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                    {'name': 't2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                    {'name': 't3', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                    {'name': 't4', 'type': 'continuous', 'domain': (1, inputs['rng'][4])}]
     else:
-        space = [{'name': 't1', 'type': 'continuous', 'domain': (
-            0, inputs['rng'][4]-1)}, {'name': 't2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])}]
-
+        if subfor[1][0] == inputs['input1'][0] :
+            if subfor[1][1] == inputs['input1'][0] :
+                space = [{'name': 'c', 'type': 'continuous', 'domain': (min(inputs['rng'][0][0],inputs['rng'][2][0]),max(inputs['rng'][0][1],inputs['rng'][2][1]))},
+                     {'name': 't1', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                     {'name': 't2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                     {'name': 't3', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                     {'name': 't4', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                     {'name': 'c_2', 'type': 'continuous', 'domain': (min(inputs['rng'][0][0],inputs['rng'][2][0]),max(inputs['rng'][0][1],inputs['rng'][2][1]))},
+                     {'name': 't1_2', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                     {'name': 't2_2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                     {'name': 't3_2', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                     {'name': 't4_2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])}]
+            else:
+                space = [{'name': 'c', 'type': 'continuous', 'domain': (min(inputs['rng'][0][0],inputs['rng'][2][0]),max(inputs['rng'][0][1],inputs['rng'][2][1]))},
+                        {'name': 't1', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                        {'name': 't2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                        {'name': 't3', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                        {'name': 't4', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                        {'name': 'c_2', 'type': 'continuous', 'domain':(min(inputs['rng'][1][0],inputs['rng'][3][0]),max(inputs['rng'][1][1],inputs['rng'][3][1]))},
+                        {'name': 't1_2', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                        {'name': 't2_2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                        {'name': 't3_2', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                        {'name': 't4_2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])}]
+        elif subfor[1][0] == inputs['input2'][0] :
+            if subfor[1][1] == inputs['input1'][0] :
+                space = [{'name': 'c', 'type': 'continuous', 'domain': (min(inputs['rng'][1][0],inputs['rng'][3][0]),max(inputs['rng'][1][1],inputs['rng'][3][1]))},
+                     {'name': 't1', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                     {'name': 't2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                     {'name': 't3', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                     {'name': 't4', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                     {'name': 'c_2', 'type': 'continuous', 'domain': (min(inputs['rng'][0][0],inputs['rng'][2][0]),max(inputs['rng'][0][1],inputs['rng'][2][1]))},
+                     {'name': 't1_2', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                     {'name': 't2_2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                     {'name': 't3_2', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                     {'name': 't4_2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])}]
+            else:
+                space = [{'name': 'c', 'type': 'continuous', 'domain': (min(inputs['rng'][1][0],inputs['rng'][3][0]),max(inputs['rng'][1][1],inputs['rng'][3][1]))},
+                        {'name': 't1', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                        {'name': 't2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                        {'name': 't3', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                        {'name': 't4', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                        {'name': 'c_2', 'type': 'continuous', 'domain': (min(inputs['rng'][1][0],inputs['rng'][3][0]),max(inputs['rng'][1][1],inputs['rng'][3][1]))},
+                        {'name': 't1_2', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                        {'name': 't2_2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])},
+                        {'name': 't3_2', 'type': 'continuous', 'domain': (0, inputs['rng'][4]-1)},
+                        {'name': 't4_2', 'type': 'continuous', 'domain': (1, inputs['rng'][4])}]
+                
     # constraints = [{'name': 'constr_1', 'constraint': '-x[:,1] -.5 + abs(x[:,0]) - np.sqrt(1-x[:,0]**2)'},
     #    {'name': 'constr_2', 'constraint': 'x[:,1] +.5 - abs(x[:,0]) - np.sqrt(1-x[:,0]**2)'}]
 
@@ -193,4 +328,3 @@ def GP_opt(*subfor, **inputs):
 
     # Best found value
     return bo.x_opt
-
