@@ -81,13 +81,19 @@ def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
 
                  rob_reg = np.append(rob_reg, rob_r)
                  rob_anom = np.append(rob_anom, rob_a)
-        
+                        
+            pos = 0
+            neg = 0
+            for i in rob_reg:
+                if i>= 0: pos +=1 
+            for i in rob_anom:
+                 if i< 0:neg +=1
             rob_reg_av = np.average(rob_reg)
-            rob_anom_av = np.average(rob_anom)
-            
+            rob_anom_av = np.average(rob_anom)    
             A = abs(rob_reg_av-rob_anom_av)
+            
 #            print('t1<t2')
-            if rob_reg_av >0 and rob_anom_av <0:
+            if 1000-pos < 100 and 1000-neg <100:
                 A += 100           
         elif t2<=t1:
 #            print('t1>t2')
@@ -112,7 +118,7 @@ def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
     print(bounds)
 
     initial_design = GPyOpt.experiment_design.initial_design(
-        'random', feasible_region, 20)
+        'random', feasible_region, 10)
 
     # print(initial_design)
     # --- CHOOSE the objective
@@ -139,7 +145,7 @@ def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
 
     # --- Stop conditions
     max_time = None
-    max_iter = 10
+    max_iter = 1
     tolerance = 1e-8     # distance between two consecutive observations
 
     # Run the optimization
@@ -161,4 +167,3 @@ def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
 #
 #phi = GP_opt('G[{1},{2}](y > {0:.2f})','G', input1=x_reg, input2=y_reg,input3=x_anom, input4=y_anom, rng_mod=rng_mod)
 #print(phi)
-
