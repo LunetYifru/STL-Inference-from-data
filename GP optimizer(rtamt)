@@ -1,0 +1,164 @@
+from cmath import inf
+from math import exp
+from random import seed
+import GPyOpt
+import numpy as np
+from scipy.stats import norm
+import pandas as pd
+import rtamt
+
+#x_reg = pd.read_excel(r'x1_reg.xlsx', header=None).iloc[::-1]
+#y_reg = pd.read_excel(r'x2_reg.xlsx', header=None).iloc[::-1]
+#x_anom = pd.read_excel(r'x1_anom.xlsx', header=None).iloc[::-1]
+#y_anom = pd.read_excel(r'x2_anom.xlsx', header=None).iloc[::-1]
+#
+#rng_x_reg = (min(x_reg.min()), max(x_reg.max()))
+#rng_y_reg = (min(y_reg.min()), max(y_reg.max()))
+#rng_x_anom = (min(x_anom.min()), max(x_anom.max()))
+#rng_y_anom = (min(y_anom.min()), max(y_anom.max()))
+#rng = [rng_x_reg, rng_y_reg, rng_x_anom, rng_y_anom, len(x_reg)]
+#rng_mod = [min(rng_x_reg[0],rng_y_reg[0],rng_x_anom[0],rng_y_anom[0]), max(rng_x_reg[1],rng_y_reg[1],rng_x_anom[1],rng_y_anom[1]),len(x_reg)]
+
+
+def robustness(dataset, spec):
+    rob = spec.evaluate(dataset)
+    return [i[1] for i in rob]
+
+def specification(spec_str):
+    spec = rtamt.STLSpecification(language=rtamt.Language.PYTHON)
+    spec.name = 'STL discrete-time online Python monitor'
+    spec.declare_var('x', 'float')
+    spec.declare_var('y', 'float')
+    spec.spec = spec_str
+    spec.parse()
+    return spec
+
+def signal(x,y,i):
+    dataset = {
+            'time': [k for k in x.index][::-1],
+            'x': [j for j in x[i]],
+            'y': [j for j in y[i]]}
+    return dataset
+    
+  
+def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
+
+    def pars(x):
+        t1 = 0
+        t2 = inf
+        if x.shape[1] == 1:
+            c = int(x[:, 0])
+        elif x.shape[1] == 3:
+            c = int(x[:, 0])
+            t1 = int(x[:, 1])
+            t2 = int(x[:, 2])
+        else:
+            t1 = int(x[:, 0])
+            t2 = int(x[:, 1])            
+        
+        if operation == '>' or operation == '<':
+            phi = spec.format(c)
+        elif operation =='G' or operation == 'F':
+            phi = spec.format(c,int(t1),int(t2))
+        elif operation =='U':
+            phi = spec.format(int(t1),int(t2))
+        print(phi)    
+        rob_reg = np.empty(0)
+        rob_anom = np.empty(0)
+        if t1 < t2:
+            for i in range(len(x_reg.columns)):
+                 if operation == '>' or operation == '<':
+                     rob_r = min(robustness(signal(x_reg,y_reg,i), specification(phi)))
+                     rob_a = min(robustness(signal(x_anom,y_anom,i), specification(phi)))
+
+                 elif operation == 'G':
+                     rob_r = min(robustness(signal(x_reg,y_reg,i), specification(phi)))
+                     rob_a = min(robustness(signal(x_anom,y_anom,i), specification(phi)))
+
+                 elif operation == 'F' or operation == 'U':
+                     rob_r = max(robustness(signal(x_reg,y_reg,i), specification(phi)))
+                     rob_a = max(robustness(signal(x_anom,y_anom,i), specification(phi)))
+
+                 rob_reg = np.append(rob_reg, rob_r)
+                 rob_anom = np.append(rob_anom, rob_a)
+        
+            rob_reg_av = np.average(rob_reg)
+            rob_anom_av = np.average(rob_anom)
+            
+            A = abs(rob_reg_av-rob_anom_av)
+#            print('t1<t2')
+            if rob_reg_av >0 and rob_anom_av <0:
+                A += 100           
+        elif t2<=t1:
+#            print('t1>t2')
+            A = -100
+        print('A is:',A,'with phi :',phi)
+        return -A
+    
+    if operation == '>' or operation == '<':
+        space = [{'name': 'c', 'type': 'continuous','domain': (rng_mod[0],rng_mod[1])}]
+    elif operation =='G' or operation == 'F':
+        space = [{'name': 'c', 'type': 'continuous','domain': (rng_mod[0],rng_mod[1])}, 
+            {'name': 't1', 'type': 'continuous', 'domain': (0, rng_mod[2]-1)}, 
+            {'name': 't2', 'type': 'continuous', 'domain': (1, rng_mod[2])}]
+    else:
+        space = [{'name': 't1', 'type': 'continuous', 'domain': (0, rng_mod[2]-1)}, 
+            {'name': 't2', 'type': 'continuous', 'domain': (1, rng_mod[2])}]
+    # constraints = [{'name': 'constr_1', 'constraint': '-x[:,1] -.5 + abs(x[:,0]) - np.sqrt(1-x[:,0]**2)'},
+    #    {'name': 'constr_2', 'constraint': 'x[:,1] +.5 - abs(x[:,0]) - np.sqrt(1-x[:,0]**2)'}]
+
+    feasible_region = GPyOpt.Design_space(space=space)
+    bounds = feasible_region.get_continuous_bounds()
+    print(bounds)
+
+    initial_design = GPyOpt.experiment_design.initial_design(
+        'random', feasible_region, 20)
+
+    # print(initial_design)
+    # --- CHOOSE the objective
+    objective = GPyOpt.core.task.SingleObjective(pars)
+
+    # --- CHOOSE the model type
+    model = GPyOpt.models.GPModel(
+        exact_feval=True, optimize_restarts=10, verbose=False)
+
+    # --- CHOOSE the acquisition optimizer
+    aquisition_optimizer = GPyOpt.optimization.AcquisitionOptimizer(
+        feasible_region)
+
+    # --- CHOOSE the type of acquisition
+    acquisition = GPyOpt.acquisitions.AcquisitionEI(
+        model, feasible_region, optimizer=aquisition_optimizer)
+
+    # --- CHOOSE a collection method
+    evaluator = GPyOpt.core.evaluators.Sequential(acquisition)
+
+    # BO object
+    bo = GPyOpt.methods.ModularBayesianOptimization(
+        model, feasible_region, objective, acquisition, evaluator, initial_design)
+
+    # --- Stop conditions
+    max_time = None
+    max_iter = 10
+    tolerance = 1e-8     # distance between two consecutive observations
+
+    # Run the optimization
+    bo.run_optimization(max_iter=max_iter, max_time=max_time,
+                        eps=tolerance, verbosity=True)
+
+    # bo.plot_acquisition()
+    # bo.plot_convergence()
+
+    # Best found value
+    if operation == '<' or operation == '>':
+        phi = spec.format(bo.x_opt[0])
+    elif operation =='G' or operation == 'F':
+        phi = spec.format(bo.x_opt[0],int(bo.x_opt[1]),int(bo.x_opt[2]))
+    elif operation == 'U':
+        phi = spec.format(int(bo.x_opt[0]),int(bo.x_opt[1]))
+        
+    return phi
+#
+#phi = GP_opt('G[{1},{2}](y > {0:.2f})','G', input1=x_reg, input2=y_reg,input3=x_anom, input4=y_anom, rng_mod=rng_mod)
+#print(phi)
+
