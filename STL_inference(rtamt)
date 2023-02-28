@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from GPtest import GP_opt
+from GPyOptPars import GP_opt
 
 ###################    Utility Functions for STL   ##############################
 def robustness(dataset, spec):
@@ -156,7 +156,7 @@ def fitness_func(results, size):
        Fitness_score = results[1]+ results[0]
     else:
         # decrease robustness by (size-2)X10 % for sizes greater than 2
-        Fitness_score = (2000-(results[1]+-results[0]))*(1-((size-3)/10))
+        Fitness_score = (results[1]+results[0])*(1-((size-3)/10))
     return Fitness_score
  
 # ###################      Compute robustness, size, and fitness       ###########################
