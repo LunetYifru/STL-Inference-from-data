@@ -1,11 +1,10 @@
 import random
-import copy
 import rtamt
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from GPyOptPars import GP_opt
+from GPtest import GP_opt
 
 ###################    Utility Functions for STL   ##############################
 def robustness(dataset, spec):
@@ -68,47 +67,48 @@ def initialize(x_reg,y_reg,x_anom,y_anom,rng_mod):
 
     pop_df['Name'] = population.keys()
     pop_df['Formula'] = population.values()
-    pop_df['operation'] = op
-    print(pop_df.head())
+    pop_df['Operation'] = op
+    print(pop_df.head(11))
 
 
     
  ##########  initialization of non-primary formulae  ##########
     pop_ext = {}
+    N = []  
     for i in range(12, 30):
         random.seed()
-        rand = random.randint(1, 4)
+        rand = random.randint(1, 4) 
         
-        num = random.sample(range(0, 12), 2)
-#        subformula = [pop_df.iloc[num[0]]['Formula'],
-#                       pop_df.iloc[num[1]]['Formula']]
+        num = random.sample(range(0, 11), 2) 
+        while ('x' in pop_df.iloc[num[0]]['Formula'] and 'x' in pop_df.iloc[num[1]]['Formula']) or ('y' in pop_df.iloc[num[0]]['Formula'] and 'y' in pop_df.iloc[num[1]]['Formula']) or (num in N):
+               num = random.sample(range(0, 11), 2)        
+
+        N.append(num)
+        print('num:',num,' and N:',N)
         if rand == 1:
              op ='U'
-             pop_ext['phi_' +str(i)] = GP_opt(pop_df.iloc[num[0]]['Formula']+ op +pop_df.iloc[num[1]]['Formula'],'U', x_reg,y_reg,x_anom,y_anom,rng_mod)
+             pop_ext['phi' +str(i)] = GP_opt('('+pop_df.iloc[num[0]]['Formula']+')'+ op+'[{0},{1}]('+pop_df.iloc[num[1]]['Formula']+')','U', x_reg,y_reg,x_anom,y_anom,rng_mod)
         elif rand == 2:
              op = '&'
-             pop_ext['phi_' + str(i)] = pop_df.iloc[num[0]]['Formula']+ op +pop_df.iloc[num[1]]['Formula']
+             pop_ext['phi' + str(i)] = '('+pop_df.iloc[num[0]]['Formula']+')'+ op +'('+pop_df.iloc[num[1]]['Formula']+')'
         elif rand == 3:
              op = '|'
-             pop_ext['phi_' + str(i)] = pop_df.iloc[num[0]]['Formula']+ op +pop_df.iloc[num[1]]['Formula']
+             pop_ext['phi' + str(i)] = '('+pop_df.iloc[num[0]]['Formula']+')'+ op +'('+pop_df.iloc[num[1]]['Formula']+')'
         elif rand == 4:
              op = 'not'
-             pop_ext['phi_' + str(i)] = op +'('+pop_df.iloc[num[0]]['Formula']+')'
+             pop_ext['phi' + str(i)] = op +'('+pop_df.iloc[num[0]]['Formula']+')'
 
+        print(pop_ext)        
         pop_df = pop_df.append({'Name': 'phi' + str(i),'Formula': pop_ext['phi'+ str(i)],'Operation': op}, ignore_index=True)   
 
     population = {**population, **pop_ext}    
     print('Length of DF ---', len(pop_df))    
     return pop_df
 
-XX = initialize(x_reg,y_reg,x_anom,y_anom,rng_mod)
-# ##############################     parameters for formula           ##################
 
-def compute_rob(phi,operation):
+# ##############################     computing parameters for formula           ##################
 
-    rob_reg_all = np.empty(0)
-    rob_anom_all = np.empty(0)
-    
+def compute_rob(phi,operation): 
     print('fromula: ', phi, operation)
     
     rob_reg = np.empty(0)
@@ -123,7 +123,7 @@ def compute_rob(phi,operation):
             rob_r = max(robustness(signal(x_reg,y_reg,i), specification(phi)))
             rob_a = max(robustness(signal(x_anom,y_anom,i), specification(phi)))
 
-        elif operation == 'G' or operation == '&' or operation == '|':
+        elif operation == 'G' or operation == '&' or operation == '|' or operation == 'not':
             rob_r = min(robustness(signal(x_reg,y_reg,i), specification(phi)))
             rob_a = min(robustness(signal(x_anom,y_anom,i), specification(phi)))
                  
@@ -140,30 +140,48 @@ def compute_rob(phi,operation):
     
     results = [pos, neg]
     print(results)
-    rob_diff = np.absolute(np.average(rob_reg_all) - np.average(rob_anom_all))
+    # rob_diff = np.absolute(np.average(rob_reg) - np.average(rob_anom))
     
-    return rob_diff,results
-
-
+    return results
 def formula_size(formula):
-    ops = '<>♢◻∧∨¬U'
-    count = 0
+    ops = '<>FG&|U'
+    size = 0
     for i in formula:
         if i in ops:
-            count += 1
-    return count
-
+            size += 1
+    return size
 
 def fitness_func(results, size):
     if size < 3:
        Fitness_score = results[1]+ results[0]
     else:
         # decrease robustness by (size-2)X10 % for sizes greater than 2
-        Fitness_score = (results[1]+ results[0])*(1-((size-3)/10))
+        Fitness_score = (2000-(results[1]+-results[0]))*(1-((size-3)/10))
     return Fitness_score
-    
-  #####################      Rearrange  population with descending order of fitness  ############
+ 
+# ###################      Compute robustness, size, and fitness       ###########################
 
+def evaluate(pop_df):
+     print('-------------Evaluating formulae in population--------------')
+     pop_size = []
+     pop_fit = []
+     pop_res = []
+     for i in range(len(pop_df)):
+         formula = pop_df.iloc[i]['Formula']
+         operation = pop_df.iloc[i]['Operation']
+         
+         pop_res.append(compute_rob(formula, operation))
+         pop_size.append(formula_size(formula))
+         pop_fit.append(fitness_func(pop_res[-1], pop_size[-1]))
+         
+     pop_df['Size'] = pop_size
+     pop_df['Fitness'] = pop_fit
+     pop_df['Results'] = pop_res
+     pop_df_evalulated = pop_df
+    
+     return pop_df_evalulated   
+  
+#####################      Rearrange  population with descending order of fitness  ############
 
 def rank(pop_df_evaluated):
     pop_df_evaluated['Rank'] = pop_df_evaluated['Fitness'].rank(ascending=0)
@@ -174,45 +192,16 @@ def rank(pop_df_evaluated):
     pop_df_ranked = pop_df_evaluated
     return pop_df_ranked
 
-# ###################      Compute robustness, size, and fitness       ###########################
 
-def evaluate(pop_df):
-     print('-------------Evaluating formulae in population--------------')
-     pop_rob = []
-     pop_size = []
-     pop_fit = []
-     res = []
-     for i in range(len(pop_df)):
-         formula = pop_df.iloc[i]['Formula']
-         operation = pop_df.iloc[i]['Operation']
-         
-         rob_diff, results = compute_rob(formula, operation)
-         pop_rob.append(rob_diff)
-         res.append(results)
-         pop_size.append(formula_size(formula))
-         fitness = fitness_func(res[-1], pop_size[-1])
-         pop_fit.append(fitness)
- #        print('Fitness Score: ', pop_fit[-1])
-    
-    
-     ####################          Update dataframe        ##########################
-    
-     pop_df['Robustness'] = pop_rob
-     pop_df['Size'] = pop_size
-     pop_df['Fitness'] = pop_fit
-     pop_df['Results'] = res
-     pop_df_evalulated = pop_df
-    
-     return pop_df_evalulated
+####################       New generation parents (Top 25)   ####################
+def top_half(pop_df_ranked):
+    print('-------------Top half of population--------------')
+    pop_df_new = pop_df_ranked.head(25)
+#    print(pop_df_new.head(10))
+    return pop_df_new
 
-# ####################       New generation parents (Top 25)   ####################
-# def topHalf(pop_df_evaluated):
-#     print('-------------Top half of population--------------')
-#     pop_df_ranked = rank(pop_df_evaluated)
-#     pop_df_new = pop_df_ranked.head(25)
-# #    print(pop_df_new.head(10))
-#     return pop_df_new
-
+XX = top_half(rank(evaluate(initialize(x_reg, y_reg, x_anom, y_anom, rng_mod))))
+print(XX)
 # ###############################   Mutation and Crossover Functions   ###########
 
 # def Mutation(index, pop_df_new):
@@ -504,7 +493,8 @@ def evaluate(pop_df):
 
 #     pop_df = Initialize(x1_reg_exp,x2_reg_exp,x1_anom_exp,x2_anom_exp,rng)
 #     pop_df_evaluated = evaluate(pop_df)
-#     pop_df_new = topHalf(pop_df_evaluated)
+#     pop_df_ranked = rank(pop_df_evaluated)
+#     pop_df_new = topHalf(pop_df_ranked)
 #     count = 0
 #     while pop_df_new.iloc[0]['Results'][0]!=1000 or pop_df_new.iloc[0]['Results'][1]!=1000:
         
