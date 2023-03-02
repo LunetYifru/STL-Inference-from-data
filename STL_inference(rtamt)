@@ -3,7 +3,7 @@ import rtamt
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
+import re
 from GPyOptPars import GP_opt
 
 ###################    Utility Functions for STL   ##############################
@@ -50,20 +50,26 @@ def initialize(x_reg,y_reg,x_anom,y_anom,rng_mod):
     print('-------------Initializing population--------------')
     population = {}
     pop_df = pd.DataFrame()
-    op = ['>','<','>','<','G','G','G','G','F','F','F','F']
+    op = ['>','<','>','<','G','G','G','G','F','F','F','F','U','U','U','U']
     
     population['phi1'] = GP_opt('x > {0:.2f}',op[0], x_reg,y_reg,x_anom,y_anom,rng_mod)
     population['phi2'] = GP_opt('x < {0:.2f}',op[1], x_reg,y_reg,x_anom,y_anom,rng_mod)
     population['phi3'] = GP_opt('y > {0:.2f}',op[2], x_reg,y_reg,x_anom,y_anom,rng_mod)
     population['phi4'] = GP_opt('y < {0:.2f}',op[3], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi5'] = GP_opt('G[{1},{2}](x > {0:.2f})',op[4], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi6'] = GP_opt('G[{1},{2}](x < {0:.2f})',op[5], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi7'] = GP_opt('G[{1},{2}](y > {0:.2f})',op[6], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi8'] = GP_opt('G[{1},{2}](y < {0:.2f})',op[7], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi9'] = GP_opt('F[{1},{2}](x > {0:.2f})',op[8], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi10'] = GP_opt('F[{1},{2}](x < {0:.2f})',op[9], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi11'] = GP_opt('F[{1},{2}](y > {0:.2f})',op[10], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi12'] = GP_opt('F[{1},{2}](y < {0:.2f})',op[11], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    population['phi5'] = GP_opt('G[{0},{1}](x > {2:.2f})',op[4], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    population['phi6'] = GP_opt('G[{0},{1}](x < {2:.2f})',op[5], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    population['phi7'] = GP_opt('G[{0},{1}](y > {2:.2f})',op[6], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    population['phi8'] = GP_opt('G[{0},{1}](y < {2:.2f})',op[7], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    population['phi9'] = GP_opt('F[{0},{1}](x > {2:.2f})',op[8], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    population['phi10'] = GP_opt('F[{0},{1}](x < {2:.2f})',op[9], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    population['phi11'] = GP_opt('F[{0},{1}](y > {2:.2f})',op[10], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    population['phi12'] = GP_opt('F[{0},{1}](y < {2:.2f})',op[11], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    
+    population['phi13'] = GP_opt('(x<{2:.2f})U[{0},{1}](y>{3:.2f})',op[12], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    population['phi14'] = GP_opt('(x>{2:.2f})U[{0},{1}](y<{3:.2f})',op[13], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    population['phi15'] = GP_opt('(y>{2:.2f})U[{0},{1}](x>{3:.2f})',op[14], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    population['phi16'] = GP_opt('(y<{2:.2f})U[{0},{1}](x<{3:.2f})',op[15], x_reg,y_reg,x_anom,y_anom,rng_mod)
+        
 
     pop_df['Name'] = population.keys()
     pop_df['Formula'] = population.values()
@@ -72,12 +78,12 @@ def initialize(x_reg,y_reg,x_anom,y_anom,rng_mod):
 
 
     
- ##########  initialization of non-primary formulae  ##########
+ ##########  initialization of formulae with binary operators ##########
     pop_ext = {}
     N = []  
-    for i in range(12, 30):
+    for i in range(16, 40):
         random.seed()
-        rand = random.randint(1, 4) 
+        rand = random.randint(1, 3) 
         
         num = random.sample(range(0, 11), 2) 
         while ('x' in pop_df.iloc[num[0]]['Formula'] and 'x' in pop_df.iloc[num[1]]['Formula']) or ('y' in pop_df.iloc[num[0]]['Formula'] and 'y' in pop_df.iloc[num[1]]['Formula']) or (num in N):
@@ -86,15 +92,12 @@ def initialize(x_reg,y_reg,x_anom,y_anom,rng_mod):
         N.append(num)
         print('num:',num,' and N:',N)
         if rand == 1:
-             op ='U'
-             pop_ext['phi' +str(i)] = GP_opt('('+pop_df.iloc[num[0]]['Formula']+')'+ op+'[{0},{1}]('+pop_df.iloc[num[1]]['Formula']+')','U', x_reg,y_reg,x_anom,y_anom,rng_mod)
-        elif rand == 2:
              op = '&'
              pop_ext['phi' + str(i)] = '('+pop_df.iloc[num[0]]['Formula']+')'+ op +'('+pop_df.iloc[num[1]]['Formula']+')'
-        elif rand == 3:
+        elif rand == 2:
              op = '|'
              pop_ext['phi' + str(i)] = '('+pop_df.iloc[num[0]]['Formula']+')'+ op +'('+pop_df.iloc[num[1]]['Formula']+')'
-        elif rand == 4:
+        elif rand == 3:
              op = 'not'
              pop_ext['phi' + str(i)] = op +'('+pop_df.iloc[num[0]]['Formula']+')'
 
@@ -143,7 +146,7 @@ def compute_rob(phi,operation):
     # rob_diff = np.absolute(np.average(rob_reg) - np.average(rob_anom))
     
     return results
-def formula_size(formula):
+def size(formula):
     ops = '<>FG&|U'
     size = 0
     for i in formula:
@@ -153,7 +156,7 @@ def formula_size(formula):
 
 def fitness_func(results, size):
     if size < 3:
-       Fitness_score = results[1]+ results[0]
+       Fitness_score = results[1]+results[0]
     else:
         # decrease robustness by (size-2)X10 % for sizes greater than 2
         Fitness_score = (results[1]+results[0])*(1-((size-3)/10))
@@ -171,7 +174,7 @@ def evaluate(pop_df):
          operation = pop_df.iloc[i]['Operation']
          
          pop_res.append(compute_rob(formula, operation))
-         pop_size.append(formula_size(formula))
+         pop_size.append(size(formula))
          pop_fit.append(fitness_func(pop_res[-1], pop_size[-1]))
          
      pop_df['Size'] = pop_size
@@ -200,345 +203,182 @@ def top_half(pop_df_ranked):
 #    print(pop_df_new.head(10))
     return pop_df_new
 
-XX = top_half(rank(evaluate(initialize(x_reg, y_reg, x_anom, y_anom, rng_mod))))
-print(XX)
+#XX = top_half(rank(evaluate(initialize(x_reg, y_reg, x_anom, y_anom, rng_mod))))
+#print(XX)
 # ###############################   Mutation and Crossover Functions   ###########
 
-# def Mutation(index, pop_df_new):
-#     formula = pop_df_new.iloc[index]['Formula']
-#     subformula = pop_df_new.iloc[index]['Subformula']
-#     signal = pop_df_new.iloc[index]['Signal']
-#     print(formula,subformula,signal)
-#     # alter temporal operators
-#     if isinstance(formula, stlcg.Always):
-#         if isinstance(subformula, stlcg.Eventually):
-#             phi = stlcg.Negation(subformula)
-#             param = None
-#         else:
-#         # change to eventually
-#             X = GP_opt('eventually', signal, subformula, input1=x1_reg_exp,input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
-#             phi = stlcg.Eventually(subformula, interval=[int(X[0]), int(X[1])])
-#             param = [int(X[0]), int(X[1])]
-        
-#     elif isinstance(formula, stlcg.Eventually):
-#         if isinstance(subformula, stlcg.Always):
-#             phi = stlcg.Negation(subformula)
-#             param = None
-#         else:
-#             X = GP_opt('always', signal, subformula, input1=x1_reg_exp,
-#                        input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
-#             # change to Always
-#             phi = stlcg.Always(subformula, interval=[int(X[0]), int(X[1])])
-#             param = [int(X[0]), int(X[1])]
-            
-#     elif isinstance(formula, stlcg.Until):
-#         X = GP_opt('until', signal, subformula[1],subformula[0], input1=x1_reg_exp,
-#                    input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
-#         # flip until
-#         phi = stlcg.Until(subformula[1],subformula[0], interval=[int(X[0]), int(X[1])])
-#         param = [int(X[0]), int(X[1])]
-#     elif isinstance(formula, stlcg.And):
-#         # change to or
-#         phi = stlcg.Or(subformula[0], subformula[1])
-#         param = None
-#     elif isinstance(formula, stlcg.Or):
-#         # change to and
-#         phi = stlcg.And(subformula[0], subformula[1])
-#         param = None
-#     elif isinstance(formula, stlcg.LessThan):
-#         # change to >
-#         X = GP_opt('greaterthan', signal, input1=x1_reg_exp,
-#                    input2=x2_reg_exp, input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
-#         phi = stlcg.GreaterThan(subformula,X[0])
-#         param = [X[0]]
-#     elif isinstance(formula, stlcg.GreaterThan):
-#         # change to <
-#         X = GP_opt('lessthan', signal, input1=x1_reg_exp, input2=x2_reg_exp,
-#                    input3=x1_anom_exp, input4=x2_anom_exp, rng=rng)
-        
-#         phi = stlcg.LessThan(subformula,X[0])
-#         param = [X[0]]
-        
-#     print(phi)    
-#     return phi, subformula, signal, param
+def mutate(index, pop_df_new):
+     formula = pop_df_new.iloc[index]['Formula']
+     op = pop_df_new.iloc[index]['Operation']
+     print('formula is: ',formula,op)
 
+     if '>' in formula:
+         op = '<'
+         print(op)
+         if size(formula)==1:
+             phi=formula[:formula.find('>')]+op+'{0:.2f}'
+             phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)
+             return phi,op 
+     if '<' in formula:
+         op = '>'
+         print(op)
+         if size(formula)==1:
+             phi=formula[:formula.find('<')]+op+'{0:.2f}'
+             phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)
+             return phi,op        
+     if 'F' in formula:
+         op ='G'
+         print(op)
+         phi=formula.replace(re.findall(re.escape('F')+"(.*)"+re.escape(']'),formula)[0],'[{},{}',1).replace('F',op,1)
+         phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)     # alter temporal operators
+         return phi,op
+     elif 'G' in formula:
+         op ='F'
+         print(op)
+         phi=formula.replace(re.findall(re.escape('G')+"(.*)"+re.escape(']'),formula)[0],'[{},{}',1).replace('G',op,1)
+         phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)
+         return phi,op
+     elif 'F' in formula:
+         op = 'G'
+         print(op)
+         phi=formula.replace(re.findall(re.escape('F')+"(.*)"+re.escape(']'),formula)[0],'[{},{}',1).replace('F',op,1)
+         phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)
+         return phi,op          
+     elif '&' in formula:
+         op = '|'
+         print(op)
+         phi = formula.replace('&',op,1)
+         return phi,op
+     elif '|' in formula:
+         op = '&'
+         print(op)
+         phi = formula.replace('|',op,1)
+         return phi,op
+     else:
+         return formula,op
 
-# def Crossover(index1,index2,pop_df_new):
-#     formula1 = pop_df_new.iloc[index1]['Formula']
-#     formula2 = pop_df_new.iloc[index2]['Formula']
-#     subformula1 = pop_df_new.iloc[index1]['Subformula']
-#     subformula2 = pop_df_new.iloc[index2]['Subformula']
-#     signal1 = pop_df_new.iloc[index1]['Signal']
-#     signal2 = pop_df_new.iloc[index2]['Signal']
+#
+def crossover(index1,index2,pop_df_new):
+     formula1 = pop_df_new.iloc[index1]['Formula']
+     formula2 = pop_df_new.iloc[index2]['Formula']
    
-#     print(formula1)
-#     print(formula2)
+     print(formula1)
+     print(formula2)
 
-#     if isinstance(formula1, stlcg.Always):
-#         if isinstance(formula2, stlcg.Eventually):
-#             if isinstance(subformula2[0], stlcg.Always):
-#                 phi1 = subformula2[0]
-#                 phi2 = stlcg.Eventually(formula1)
-#             else:
-#                 phi1 = stlcg.Always(subformula2[0])
-#                 phi2 = stlcg.Eventually(subformula1[0])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0]]
-#             subformula_2 = [subformula2[0]]
-#             signal_1 = [signal1[0]]
-#             signal_2 = [signal2[0]]
-                        
-#         elif isinstance(formula2, stlcg.Always):
-#             phi1 = stlcg.Always(subformula1[0] & subformula2[0])
-#             phi2 = stlcg.Always(subformula1[0] | subformula2[0])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],subformula2[0]]
-#             subformula_2 = [subformula1[0], subformula2[0]]
-#             signal_1 = [signal1[0], signal2[0]]
-#             signal_2 = [signal1[0], signal2[0]]
-#         elif isinstance(formula2, stlcg.And):
-#             phi1 = stlcg.And(subformula2[0], formula1)
-#             phi2 = stlcg.And(subformula2[1], formula1)
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula2[0], formula1]
-#             subformula_2 = [subformula2[1], formula1]
-#             signal_1 = [signal2[0], signal1[0]]
-#             signal_2 = [signal2[1], signal1[0]]
-#         elif isinstance(formula2, stlcg.Or):
-#             phi1 = stlcg.Or(subformula2[0], formula1)
-#             phi2 = stlcg.Or(subformula2[1], formula1)
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula2[0], formula1]
-#             subformula_2 = [subformula2[1], formula1]
-#             signal_1 = [signal2[0], signal1[0]]
-#             signal_2 = [signal2[1], signal1[0]]
-#         elif isinstance(formula2, stlcg.Until):
-#             phi1 = stlcg.Until(subformula2[0], formula1)
-#             phi1 = stlcg.Until(formula1,subformula2[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula2[0], formula1]
-#             subformula_2 = [formula1,subformula2[1]]
-#             signal_1 = [signal2[0], signal1[0]]
-#             signal_2 = [signal1[0],signal2[1]]
-#         elif (isinstance(formula2, stlcg.LessThan) or isinstance(formula2, stlcg.GreaterThan())):
-#             phi1 = stlcg.Always(formula2)
-#             phi2 = stlcg.Eventually(formula2)
-#             phi = [phi1,phi2]
-#             subformula_1 = [formula2]
-#             subformula_2 = [formula2]
-#             signal_1 = [signal2[0]]
-#             signal_2 = [signal2[0]]
-
-#     if isinstance(formula1, stlcg.Eventually):
-#         if isinstance(formula2, stlcg.Always()):
-#             if isinstance(subformula2[0], stlcg.Eventually()):
-#                 phi1 = subformula2[0]
-#                 phi2 = stlcg.Always(formula1)
-#             else:
-#                 phi1 = stlcg.Eventually(subformula2[0])
-#                 phi2 = stlcg.Always(subformula1[0])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0]]
-#             subformula_2 = [subformula2[0]]
-#             signal_1 = [signal1[0]]
-#             signal_2 = [signal2[0]]
-#         elif isinstance(formula2, stlcg.Eventually):
-#             phi1 = stlcg.Eventually(subformula1[0] & subformula2[0])
-#             phi2 = stlcg.Eventually(subformula1[0] | subformula2[0])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],subformula2[0]]
-#             subformula_2 = [subformula1[0], subformula2[0]]
-#             signal_1 = [signal1[0], signal2[0]]
-#             signal_2 = [signal1[0], signal2[0]]
-#         elif isinstance(formula2, stlcg.And):
-#             phi1 = stlcg.And(subformula2[0], formula1)
-#             phi2 = stlcg.And(subformula2[1], formula1)
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula2[0], formula1]
-#             subformula_2 = [subformula2[1], formula1]
-#             signal_1 = [signal2[0], signal1[0]]
-#             signal_2 = [signal2[1], signal1[0]]
-#         elif isinstance(formula2, stlcg.Or):
-#             phi1 = stlcg.Or(subformula2[0], formula1)
-#             phi2 = stlcg.Or(subformula2[1], formula1)
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula2[0], formula1]
-#             subformula_2 = [subformula2[1], formula1]
-#             signal_1 = [signal2[0], signal1[0]]
-#             signal_2 = [signal2[1], signal1[0]]
-#         elif isinstance(formula2, stlcg.Until):
-#             phi1 = stlcg.Until(subformula2[0], formula1)
-#             phi1 = stlcg.Until(formula1,subformula2[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula2[0], formula1]
-#             subformula_2 = [formula1,subformula2[1]]
-#             signal_1 = [signal2[0], signal1[0]]
-#             signal_2 = [signal1[0],signal2[1]]
-#         elif (isinstance(formula2, stlcg.LessThan) or isinstance(formula2, stlcg.GreaterThan())):
-#             phi1 = stlcg.Always(formula2)
-#             phi2 = stlcg.Eventually(formula2)
-#             phi = [phi1,phi2]
-#             subformula_1 = [formula2]
-#             subformula_2 = [formula2]
-#             signal_1 = [signal2[0]]
-#             signal_2 = [signal2[0]]
-  
-#     if isinstance(formula1,stlcg.And):
-#         if isinstance(formula2,stlcg.And):
-#             phi1 = stlcg.And(subformula1[0], subformula2[1])
-#             phi2 = stlcg.And(subformula2[0], subformula1[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],subformula2[1]]
-#             subformula_2 = [subformula2[0], subformula1[1]]
-#             signal_1 = [signal1[0], signal2[1]]
-#             signal_2 = [signal2[0], signal1[1]]
-#         elif isinstance(formula2,stlcg.Or):
-#             phi1 = stlcg.And(subformula1[0], subformula2[1])
-#             phi2 = stlcg.Or(subformula2[0], subformula1[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],subformula2[1]]
-#             subformula_2 = [subformula2[0], subformula1[1]]
-#             signal_1 = [signal1[0], signal2[1]]
-#             signal_2 = [signal2[0], signal1[1]]
-#         elif isinstance(formula2,stlcg.Until):
-#             phi1 = stlcg.And(subformula1[0], subformula2[1])
-#             phi2 = stlcg.Until(subformula2[0], subformula1[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],subformula2[1]]
-#             subformula_2 = [subformula2[0], subformula1[1]]
-#             signal_1 = [signal1[0], signal2[1]]
-#             signal_2 = [signal2[0], signal1[1]]
-#         elif (isinstance(formula2, stlcg.Always) or isinstance(formula2,stlcg.Eventually) or isinstance(formula2,stlcg.LessThan)or isinstance(formula2,stlcg.GreterThan)):
-#             phi1 = stlcg.And(subformula1[0], formula2)
-#             phi1 = stlcg.And(formula2,subformula1[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],formula2]
-#             subformula_2 = [formula2,subformula1[1]]
-#             signal_1 = [signal1[0], signal2[0]]
-#             signal_2 = [signal2[0], signal1[1]]
-            
-#     if isinstance(formula1,stlcg.Or):
-#         if isinstance(formula2,stlcg.Or):
-#             phi1 = stlcg.Or(subformula1[0], subformula2[1])
-#             phi2 = stlcg.Or(subformula2[0], subformula1[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],subformula2[1]]
-#             subformula_2 = [subformula2[0], subformula1[1]]
-#             signal_1 = [signal1[0], signal2[1]]
-#             signal_2 = [signal2[0], signal1[1]]
-#         elif isinstance(formula2,stlcg.And):
-#             phi1 = stlcg.Or(subformula1[0], subformula2[1])
-#             phi2 = stlcg.And(subformula2[0], subformula1[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],subformula2[1]]
-#             subformula_2 = [subformula2[0], subformula1[1]]
-#             signal_1 = [signal1[0], signal2[1]]
-#             signal_2 = [signal2[0], signal1[1]]
-#         elif isinstance(formula2,stlcg.Until):
-#             phi1 = stlcg.Or(subformula1[0], subformula2[1])
-#             phi2 = stlcg.Until(subformula2[0], subformula1[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],subformula2[1]]
-#             subformula_2 = [subformula2[0], subformula1[1]]
-#             signal_1 = [signal1[0], signal2[1]]
-#             signal_2 = [signal2[0], signal1[1]]
-#         elif (isinstance(formula2, stlcg.Always) or isinstance(formula2,stlcg.Eventually) or isinstance(formula2,stlcg.LessThan)or isinstance(formula2,stlcg.GreterThan)):
-#             phi1 = stlcg.Or(subformula1[0], formula2)
-#             phi2 = stlcg.Or(formula2,subformula1[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],formula2]
-#             subformula_2 = [formula2,subformula1[1]]
-#             signal_1 = [signal1[0], signal2[0]]
-#             signal_2 = [signal2[0], signal1[1]]
-            
-#     if isinstance(formula1,stlcg.Until):
-#         if isinstance(formula2,stlcg.Until):
-#             phi1 = stlcg.Until(subformula1[0], subformula2[1])
-#             phi2 = stlcg.Until(subformula2[0], subformula1[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],subformula2[1]]
-#             subformula_2 = [subformula2[0], subformula1[1]]
-#             signal_1 = [signal1[0], signal2[1]]
-#             signal_2 = [signal2[0], signal1[1]]
-#         elif isinstance(formula2,stlcg.And):
-#             phi1 = stlcg.Until(subformula1[0], subformula2[1])
-#             phi2 = stlcg.And(subformula2[0], subformula1[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],subformula2[1]]
-#             subformula_2 = [subformula2[0], subformula1[1]]
-#             signal_1 = [signal1[0], signal2[1]]
-#             signal_2 = [signal2[0], signal1[1]]
-#         elif isinstance(formula2,stlcg.Or):
-#             phi1 = stlcg.Until(subformula1[0], subformula2[1])
-#             phi2 = stlcg.Or(subformula2[0], subformula1[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],subformula2[1]]
-#             subformula_2 = [subformula2[0], subformula1[1]]
-#             signal_1 = [signal1[0], signal2[1]]
-#             signal_2 = [signal2[0], signal1[1]]
-#         elif (isinstance(formula2, stlcg.Always) or isinstance(formula2,stlcg.Eventually) or isinstance(formula2,stlcg.LessThan)or isinstance(formula2,stlcg.GreterThan)):
-#             phi1 = stlcg.Until(subformula1[0], formula2)
-#             phi2 = stlcg.Until(formula2,subformula1[1])
-#             phi = [phi1,phi2]
-#             subformula_1 = [subformula1[0],formula2]
-#             subformula_2 = [formula2,subformula1[1]]
-#             signal_1 = [signal1[0], signal2[0]]
-#             signal_2 = [signal2[0], signal1[1]]
-   
-#     return phi[0],phi[1],subformula_1,subformula_2,signal_1,signal_2
+     if ('&' in formula1):
+         op = ['&','&']
+         if ('|' in formula2):
+             phi1 = (formula1[:formula1.find('&')]+op[0])+(formula2[formula2.find('|')+1:])
+             phi2 = ( formula1[formula1.find('&')+1:] )+op[1]+ (formula2[:formula1.find('|')])  
+         elif ('&' in formula2):
+             phi1 = (formula1[:formula1.find('&')]+op[0])+(formula2[formula2.find('&')+1:])
+             phi2 = ( formula1[formula1.find('&')+1:] )+op[1]+ (formula2[:formula1.find('&')])  
+         elif ('G' in formula2) or ('F' in formula2) or (('<' in formula2 and size(formula2)==1)) or (('>' in formula2 and size(formula2)==1)) or (('not' in formula2 and size(formula2)==1)):
+             phi1 = (formula1[:formula1.find('&')])+op[0]+(formula2)
+             phi2 = (formula1[formula1.find('&')+1:])+op[1]+(formula2)
+         elif 'U' in formula2:
+             phi1 = (formula1[:formula1.find('&')])+op[0]+(formula2[formula2.find('U')+8:])
+             phi2 = formula2[:formula2.find('U')]+op[1]+formula1[formula1.find('&')+1:] 
+     elif ('|' in formula1):
+         op = ['|','|']
+         if ('&' in formula2):
+             phi1 = (formula1[:formula1.find('|')])+op[0]+(formula2[formula2.find('&')+1:])
+             phi2 =  (formula1[formula1.find('|')+1:]) +op[1]+ (formula2[:formula2.find('&')])
+         elif ('|' in formula2):
+             phi1 = (formula1[:formula1.find('|')])+op[0]+(formula2[formula2.find('|')+1:])
+             phi2 =  (formula1[formula1.find('|')+1:]) +op[1]+ (formula2[:formula2.find('|')])
+         elif ('G' in formula2) or ('F' in formula2) or (('<' in formula2 and size(formula2)==1)) or (('>' in formula2 and size(formula2)==1)) or (('not' in formula2 and size(formula2)==1)):
+             phi1 = (formula1[:formula1.find('|')])+op[0]+(formula2)
+             phi2 = (formula1[formula1.find('|')+1:]+op[1])+(formula2)
+         elif 'U' in formula2:
+             phi1 = (formula1[:formula1.find('|')])+op[0]+(formula2[formula2.find('U')+8:])
+             phi2 = (formula2[:formula2.find('U')])+op[1]+(formula1[formula1.find('|')+1:])
+     elif ('U' in formula1):
+         op = ['U','U']
+         if ('&' in formula2):
+             phi1 = (formula1[:formula1.find('U')])+'U[{0},{1}]'+ (formula2[formula2.find('&')+1:])
+             phi2 = (formula2[:formula2.find('&')])+'U[{0},{1}]'+ (formula1[formula1.find('U')+8:]) 
+         elif ('|' in formula2):
+             phi1 = (formula1[:formula1.find('U')])+'U[{0},{1}]'+ (formula2[formula2.find('|')+1:])
+             phi2 = (formula2[:formula2.find('|')])+'U[{0},{1}]'+ (formula1[formula1.find('U')+8:]) 
+         elif ('G' in formula2) or ('F' in formula2) or (('<' in formula2 and size(formula2)==1)) or (('>' in formula2 and size(formula2)==1)) or (('not' in formula2 and size(formula2)==1)):
+             phi1 = (formula1[:formula1.find('U')])+ 'U[{},{}]' + (formula2)
+             phi2 = (formula2) + 'U[{},{}]' + (formula1[formula1.find('U')+8:]) 
+         elif 'U' in formula2:
+             phi1 = (formula1[:formula1.find('U')]) + 'U[{},{}]' +(formula2[formula2.find('U')+8:]) 
+             phi2 = (formula2[:formula2.find('U')]) + 'U[{},{}]' +(formula1[formula1.find('U')+8:])     
+         phi1 = GP_opt(phi1,op[0], x_reg,y_reg,x_anom,y_anom,rng_mod) 
+         phi2 = GP_opt(phi2,op[1], x_reg,y_reg,x_anom,y_anom,rng_mod)    
+     elif ('G' in formula1) or ('F' in formula1) or (('<' in formula1) and size(formula1)==1) or (('>' in formula1) and size(formula1)==1):
+         if ('G' in formula1) or ('F' in formula1) or (('<' in formula1) and size(formula1)==1) or (('>' in formula1) and size(formula1)==1):
+             op = ['&','|']
+             phi1 = (formula1) + op[0] + (formula2)
+             phi2 = (formula1) + op[1] + (formula2)
+         elif ('U' in formula2):
+             phi1 = (formula1) + op[0] + (formula2[formula2.find('U')+8:])
+             phi2 = (formula1) + op[1] + (formula2[:formula2.find('U')])
+         elif ('&' in formula2):
+             phi1 = (formula1) + op[0] + (formula2[formula2.find('&')+1:])
+             phi2 = (formula1) + op[1] + (formula2[:formula2.find('&')])            
+         elif ('|' in formula2):
+             phi1 = (formula1 + op[0]) + (formula2[formula2.find('|')+1:])
+             phi2 = (formula1 + op[1]) + (formula2[:formula2.find('|')])
+     else:
+         op = ['not','not']
+         phi1 = 'not('+formula1+')'
+         phi2 = 'not('+formula1+')'
+     return [phi1,phi2,op]
 
 
-# ################################    GA    ############################################
-# def GA(x1_reg_exp,x2_reg_exp,x1_anom_exp,x2_anom_exp):
+################################    GA    ############################################
+def GA(x_reg, y_reg, x_anom, y_anom, rng_mod):
 
-#     pop_df = Initialize(x1_reg_exp,x2_reg_exp,x1_anom_exp,x2_anom_exp,rng)
-#     pop_df_evaluated = evaluate(pop_df)
-#     pop_df_ranked = rank(pop_df_evaluated)
-#     pop_df_new = topHalf(pop_df_ranked)
-#     count = 0
-#     while pop_df_new.iloc[0]['Results'][0]!=1000 or pop_df_new.iloc[0]['Results'][1]!=1000:
-        
-#         print('-------------Genetic Algorithm iteration ',count,'--------------') 
-#         pop_df_sechalf = pd.DataFrame(columns=['Name', 'Formula', 'Subformula','Signal'])
-#         for i in range(26, 51):
-#             print(i)
-#             random.seed()
-#             num = random.sample(range(0,25), 2)
-#             print('Random formula numbers are:', num)
-#             n = random.random()
-#             if n > 0.1:
-#                 print('*Crossover*')
-#                 phi1,phi2,subformula1,subformula2,signal1,signal2= Crossover(num[0],num[1],pop_df_new)
+     pop_df = initialize(x_reg, y_reg, x_anom, y_anom, rng_mod)
+     pop_df_evaluated = evaluate(pop_df)
+     pop_df_ranked = rank(pop_df_evaluated)
+     pop_df_new = top_half(pop_df_ranked)
+     count = 0
+     MCR = 100
+     while MCR>0.05:       
+         print('-------------Genetic Algorithm iteration ',count,'--------------') 
+         pop_df_sechalf = pd.DataFrame(columns=['Name', 'Formula', 'Operation'])
+         for i in range(26, 51):
+             random.seed()
+             n = random.random()
+             num = random.sample(range(0,25), 2)
+             if n > 0.5:
+                 print('*Crossover*')
+#                 print('Random formula numbers are:', num)
+                 X = crossover(num[0],num[1],pop_df_new)
                 
-#                 pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i),
-#                                         'Formula': phi1, 
-#                                         'Subformula': [subformula1,subformula2], 
-#                                         'Signal': [signal1,signal2]}, ignore_index=True)  
-#                 pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i+1),
-#                                         'Formula': phi1, 
-#                                         'Subformula': [subformula2,subformula1], 
-#                                         'Signal': [signal2,signal1]}, ignore_index=True)  
-#             else:
-#                 print('*Mutation*')
-#                 phi, subformula, signal, param = Mutation(num[0], pop_df_new)
+                 pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i),
+                                         'Formula': X[0], 
+                                         'Operation': X[2][0]}, ignore_index=True) 
+                 pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i+1),
+                                         'Formula': X[1], 
+                                         'Operation': X[2][1]}, ignore_index=True) 
+             else:
+                print('*Mutation*')
+                phi,op = mutate(num[0], pop_df_new)
                 
-#                 pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i),
-#                                         'Formula': phi, 
-#                                         'Subformula': [subformula], 
-#                                         'Signal': [signal]}, ignore_index=True)
+                pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i),
+                                         'Formula': phi, 
+                                         'Operation': op}, ignore_index=True) 
             
-#         pd_new = pd.concat([pop_df_new, pop_df_sechalf], ignore_index=True, axis=0)
-#         pop_df_new = topHalf(pd_new)
-#         print(pop_df_new.iloc[:10]['Results'])
-#         print(pop_df_new.iloc[0])
-#         count+=1 
+         pd_new = pd.concat([pop_df_new, pop_df_sechalf], ignore_index=True, axis=0)
+         pop_df_new = top_half(evaluate(pd_new))
+         print(pop_df_new.iloc[:10]['Results'])
+         R = pop_df_new.iloc[0]['Results'][0] + pop_df_new.iloc[0]['Results'][1]
+         R = R/2000
+         MCR = 1-R
+         print('MCR is: ', MCR)
+         count+=1 
         
-#     pop_df_final = pop_df_new  
-#     print('----------Final Population-----------\n',pop_df_final.head(10))
-#     print(pop_df_final.iloc[0])
-#     return pop_df_final
+     pop_df_final = pop_df_new  
+     print('----------Final Population-----------\n',pop_df_final.head(10))
+     print(pop_df_final.iloc[0])
+     return pop_df_final
         
-        
-
+ 
             
-# Infered_STL = GA(x1_reg_exp,x2_reg_exp,x1_anom_exp,x2_anom_exp)
+Infered_STL = GA(x_reg, y_reg, x_anom, y_anom, rng_mod)
