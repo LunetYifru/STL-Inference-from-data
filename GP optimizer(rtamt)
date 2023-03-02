@@ -47,24 +47,26 @@ def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
         t1 = 0
         t2 = inf
         if x.shape[1] == 1:
-            c = int(x[:, 0])
+            c = float(x[:, 0])
         elif x.shape[1] == 3:
-            c = int(x[:, 0])
-            t1 = int(x[:, 1])
-            t2 = int(x[:, 2])
-        else:
             t1 = int(x[:, 0])
-            t2 = int(x[:, 1])            
-        
+            t2 = int(x[:, 1])
+            c = float(x[:, 2])
+        elif x.shape[1] == 4:
+            t1 = int(x[:, 0])
+            t2 = int(x[:, 1])
+            c1 = float(x[:, 2])
+            c2 = float(x[:, 3])
         if operation == '>' or operation == '<':
             phi = spec.format(c)
         elif operation =='G' or operation == 'F':
-            phi = spec.format(c,int(t1),int(t2))
+            phi = spec.format(t1,t2,c)
         elif operation =='U':
-            phi = spec.format(int(t1),int(t2))
+            phi = spec.format(t1,t2,c1,c2)
         print(phi)    
         rob_reg = np.empty(0)
         rob_anom = np.empty(0)
+
         if t1 < t2:
             for i in range(len(x_reg.columns)):
                  if operation == '>' or operation == '<':
@@ -98,15 +100,20 @@ def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
         elif t2<=t1:
 #            print('t1>t2')
             A = -100
-        print('A is:',A,'with phi :',phi)
+#        print('A is:',A,'with phi :',phi)
         return -A
     
     if operation == '>' or operation == '<':
         space = [{'name': 'c', 'type': 'continuous','domain': (rng_mod[0],rng_mod[1])}]
     elif operation =='G' or operation == 'F':
-        space = [{'name': 'c', 'type': 'continuous','domain': (rng_mod[0],rng_mod[1])}, 
-            {'name': 't1', 'type': 'continuous', 'domain': (0, rng_mod[2]-1)}, 
-            {'name': 't2', 'type': 'continuous', 'domain': (1, rng_mod[2])}]
+        space = [{'name': 't1', 'type': 'continuous', 'domain': (0, rng_mod[2]-1)}, 
+            {'name': 't2', 'type': 'continuous', 'domain': (1, rng_mod[2])},
+            {'name': 'c', 'type': 'continuous','domain': (rng_mod[0],rng_mod[1])}]
+    elif operation =='U':
+        space = [{'name': 't1', 'type': 'continuous', 'domain': (0, rng_mod[2]-1)}, 
+            {'name': 't2', 'type': 'continuous', 'domain': (1, rng_mod[2])},
+            {'name': 'c1', 'type': 'continuous','domain': (rng_mod[0],rng_mod[1])},
+            {'name': 'c2', 'type': 'continuous','domain': (rng_mod[0],rng_mod[1])}]
     else:
         space = [{'name': 't1', 'type': 'continuous', 'domain': (0, rng_mod[2]-1)}, 
             {'name': 't2', 'type': 'continuous', 'domain': (1, rng_mod[2])}]
@@ -145,7 +152,7 @@ def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
 
     # --- Stop conditions
     max_time = None
-    max_iter = 1
+    max_iter = 2
     tolerance = 1e-8     # distance between two consecutive observations
 
     # Run the optimization
@@ -154,14 +161,14 @@ def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
 
     # bo.plot_acquisition()
     # bo.plot_convergence()
-
+    
     # Best found value
     if operation == '<' or operation == '>':
-        phi = spec.format(bo.x_opt[0])
+        phi = spec.format(bo.x_opt[0]) #c
     elif operation =='G' or operation == 'F':
-        phi = spec.format(bo.x_opt[0],int(bo.x_opt[1]),int(bo.x_opt[2]))
+        phi = spec.format(int(bo.x_opt[0]), int(bo.x_opt[1]), bo.x_opt[2]) #t1,t2,c
     elif operation == 'U':
-        phi = spec.format(int(bo.x_opt[0]),int(bo.x_opt[1]))
+        phi = spec.format(int(bo.x_opt[0]),int(bo.x_opt[1]),bo.x_opt[2],bo.x_opt[3]) #t1,t2,c1,c2
         
     return phi
 #
