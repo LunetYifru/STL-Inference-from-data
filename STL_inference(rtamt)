@@ -85,7 +85,7 @@ def initialize(x_reg,y_reg,x_anom,y_anom,rng_mod):
         random.seed()
         rand = random.randint(1, 2) 
         
-        num = random.sample(range(0, 11), 2) 
+        num = random.sample(range(0, 16), 2) 
         while ('x' in pop_df.iloc[num[0]]['Formula'] and 'x' in pop_df.iloc[num[1]]['Formula']) or ('y' in pop_df.iloc[num[0]]['Formula'] and 'y' in pop_df.iloc[num[1]]['Formula']) or (num in N):
                num = random.sample(range(0, 11), 2)        
 
@@ -165,7 +165,7 @@ def fitness_func(results, size):
 # ###################      Compute robustness, size, and fitness       ###########################
 
 def evaluate(pop_df):
-     print('-------------Evaluating formulae in population--------------')
+     print('Evaluating formulae in population...')
      pop_size = []
      pop_fit = []
      pop_res = []
@@ -198,7 +198,7 @@ def rank(pop_df_evaluated):
 
 ####################       New generation parents (Top 25)   ####################
 def top_half(pop_df_ranked):
-    print('-------------Top half of population--------------')
+    print('Top half of population...')
     pop_df_new = pop_df_ranked.head(25)
 #    print(pop_df_new.head(10))
     return pop_df_new
@@ -209,131 +209,142 @@ def top_half(pop_df_ranked):
 
 def mutate(index, pop_df_new):
      formula = pop_df_new.iloc[index]['Formula']
-     op = pop_df_new.iloc[index]['Operation']
-     print('formula is: ',formula,op)
+     op1 = pop_df_new.iloc[index]['Operation']
+     print('formula is: ',formula,op1)
             
-     if '>' in formula and size(formula) == 1:
+     if op1 == '>' and size(formula) == 1:
          op = '<'
          phi=formula[:formula.find('>')]+op+'{0:.2f}'
          phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)
          return phi,op 
-     elif '<' in formula and size(formula) == 1:
+     elif op1 == '<' and size(formula) == 1:
          op = '>'
          phi=formula[:formula.find('<')]+op+'{0:.2f}'
          phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)
          return phi,op        
-     elif 'F' in formula:
+     elif op1 == 'F':
          op ='G'
          print(op)
          phi=formula.replace(re.findall(re.escape('F')+"(.*)"+re.escape(']'),formula)[0],'[{},{}',1).replace('F',op,1)
          phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)     # alter temporal operators
          return phi,op
-     elif 'G' in formula:
+     elif op1 == 'G' :
          op ='F'
          print(op)
          phi=formula.replace(re.findall(re.escape('G')+"(.*)"+re.escape(']'),formula)[0],'[{},{}',1).replace('G',op,1)
          phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)
          return phi,op
-     elif 'F' in formula:
-         op = 'G'
-         print(op)
-         phi=formula.replace(re.findall(re.escape('F')+"(.*)"+re.escape(']'),formula)[0],'[{},{}',1).replace('F',op,1)
-         phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)
-         return phi,op          
-     elif '&' in formula:
+     elif op1 == '&':
          op = '|'
          print(op)
          phi = formula.replace('&',op,1)
          return phi,op
-     elif '|' in formula:
+     elif op1 == '|':
          op = '&'
          print(op)
          phi = formula.replace('|',op,1)
          return phi,op
-     elif 'U' in formula:
+     elif op1 == 'U':
          op = 'U'
          A = re.split(r'U\[\d+,\d+\]',formula)
-         phi = (A[1])+'U[{0},{1}]'+(A[0])
+         phi = '('+A[1]+')'+'U[{0},{1}]'+'('A[0]+')'
          phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod) 
+         return phi,op
      else:
-         return formula,op
+         return formula,op1
 
 #
 def crossover(index1,index2,pop_df_new):
      formula1 = pop_df_new.iloc[index1]['Formula']
      formula2 = pop_df_new.iloc[index2]['Formula']
+     op1 = pop_df_new.iloc[index1]['Operation']
+     op2 = pop_df_new.iloc[index2]['Operation']
+     
    
      print(formula1)
      print(formula2)
 
-     if ('&' in formula1):
+     if op1 =='&' :
          op = ['&','&']
-         if ('|' in formula2):
-             phi1 = (formula1[:formula1.find('&')]+op[0])+(formula2[formula2.find('|')+1:])
-             phi2 = ( formula1[formula1.find('&')+1:] )+op[1]+ (formula2[:formula1.find('|')])  
-         elif ('&' in formula2):
-             phi1 = (formula1[:formula1.find('&')]+op[0])+(formula2[formula2.find('&')+1:])
-             phi2 = ( formula1[formula1.find('&')+1:] )+op[1]+ (formula2[:formula1.find('&')])  
-         elif ('G' in formula2) or ('F' in formula2) or (('<' in formula2 and size(formula2)==1)) or (('>' in formula2 and size(formula2)==1)) or (('not' in formula2 and size(formula2)==1)):
-             phi1 = (formula1[:formula1.find('&')])+op[0]+(formula2)
-             phi2 = (formula1[formula1.find('&')+1:])+op[1]+(formula2)
-         elif 'U' in formula2:
+         if (op2 =='|' ):
+             phi1 = '('+formula1[:formula1.find('&')]+')'+op[0]+'('+formula2[formula2.find('|')+1:]+')'
+             phi2 = '('+ formula1[formula1.find('&')+1:]+')'+op[1]+ '('+formula2[:formula1.find('|')]+')'
+             
+         elif ( op2 =='&'):
+             phi1 = '('+formula1[:formula1.find('&')]+')'+op[0]+'('+formula2[formula2.find('&')+1:]+')'
+             phi2 = '('+ formula1[formula1.find('&')+1:]+')'+op[1]+ '('+formula2[:formula1.find('&')]+')' 
+             
+         elif ( op2 == 'G') or (op2 == 'F') or ((op2 =='<') and (size(formula2)==1)) or ((op2 =='>') and (size(formula2)==1))  or ((op2 == 'not' and size(formula2)==1)):
+             phi1 = '('+formula1[:formula1.find('&')]+')'+op[0]+'('+formula2+')'
+             phi2 = '('+formula1[formula1.find('&')+1:]+')'+op[1]+'('+formula2+')'
+             
+         elif op2 == 'U':
              A = re.split(r'U\[\d+,\d+\]',formula2)
-             phi1 = (formula1[:formula1.find('&')])+op[0]+(A[1])
-             phi2 = (A[0])+op[1]+(formula1[formula1.find('&')+1:]) 
-     elif ('|' in formula1):
+             phi1 = '('+formula1[:formula1.find('&')]+')'+op[0]+'('+A[1]+')'
+             phi2 = '('+A[0]+')'+op[1]+'('+formula1[formula1.find('&')+1:]+')' 
+             
+         return [phi1,phi2,op]
+     elif op1 == '|':
          op = ['|','|']
-         if ('&' in formula2):
-             phi1 = (formula1[:formula1.find('|')])+op[0]+(formula2[formula2.find('&')+1:])
-             phi2 =  (formula1[formula1.find('|')+1:]) +op[1]+ (formula2[:formula2.find('&')])
-         elif ('|' in formula2):
-             phi1 = (formula1[:formula1.find('|')])+op[0]+(formula2[formula2.find('|')+1:])
-             phi2 =  (formula1[formula1.find('|')+1:]) +op[1]+ (formula2[:formula2.find('|')])
-         elif ('G' in formula2) or ('F' in formula2) or (('<' in formula2 and size(formula2)==1)) or (('>' in formula2 and size(formula2)==1)) or (('not' in formula2 and size(formula2)==1)):
-             phi1 = (formula1[:formula1.find('|')])+op[0]+(formula2)
-             phi2 = (formula1[formula1.find('|')+1:]+op[1])+(formula2)
-         elif 'U' in formula2:
+         if ( op2 =='&'):
+             phi1 = '('+formula1[:formula1.find('|')]+')'+op[0]+'('+formula2[formula2.find('&')+1:]+')'
+             phi2 = '('+ formula1[formula1.find('|')+1:]+')'+op[1]+ '('+formula2[:formula1.find('&')]+')'
+             
+         elif (op2 =='|' ):
+             phi1 = '('+formula1[:formula1.find('|')]+')'+op[0]+'('+formula2[formula2.find('|')+1:]+')'
+             phi2 = '('+ formula1[formula1.find('|')+1:]+')'+op[1]+ '('+formula2[:formula1.find('|')]+')' 
+             
+         elif ( op2 == 'G') or (op2 == 'F') or ((op2 =='<') and (size(formula2)==1)) or ((op2 =='>') and (size(formula2)==1))  or ((op2 == 'not' and size(formula2)==1)):
+             phi1 = '('+formula1[:formula1.find('|')]+')'+op[0]+'('+formula2+')'
+             phi2 = '('+formula1[formula1.find('|')+1:]+')'+op[1]+'('+formula2+')'
+             
+         elif op2 == 'U':
              A = re.split(r'U\[\d+,\d+\]',formula2)
-             phi1 = (formula1[:formula1.find('|')])+op[0]+(A[1])
-             phi2 = (A[0])+op[1]+(formula1[formula1.find('|')+1:])
-     elif ('U' in formula1):
+             phi1 = '('+formula1[:formula1.find('|')]+')'+op[0]+'('+A[1]+')'
+             phi2 = '('+A[0]+')'+op[1]+'('+formula1[formula1.find('|')+1:]+')' 
+         return [phi1,phi2,op]
+     elif op1 == 'U':
          op = ['U','U']
          A = re.split(r'U\[\d+,\d+\]',formula1)
-         if ('&' in formula2):
-             phi1 = (A[0])+'U[{0},{1}]'+ (formula2[formula2.find('&')+1:])
-             phi2 = (formula2[:formula2.find('&')])+'U[{0},{1}]'+ (A[1]) 
-         elif ('|' in formula2):
-             phi1 = (A[0])+'U[{0},{1}]'+ (formula2[formula2.find('|')+1:])
-             phi2 = (formula2[:formula2.find('|')])+'U[{0},{1}]'+ (A[1]) 
-         elif ('G' in formula2) or ('F' in formula2) or (('<' in formula2 and size(formula2)==1)) or (('>' in formula2 and size(formula2)==1)) or (('not' in formula2 and size(formula2)==1)):
-             phi1 = (A[0])+ 'U[{},{}]' + (formula2)
-             phi2 = (formula2) + 'U[{},{}]' + (A[1]) 
-         elif 'U' in formula2:
+         if op2 =='&':
+             phi1 = '('+A[0]+')'+'U[{0},{1}]'+ '('+formula2[formula2.find('&')+1:]+')'
+             phi2 = '('+formula2[:formula2.find('&')]+')'+'U[{0},{1}]'+ '('+A[1]+')'
+         elif op2 =='|':
+             phi1 = '('+A[0]+')'+'U[{0},{1}]'+ '('+formula2[formula2.find('|')+1:]+')'
+             phi2 = '('+formula2[:formula2.find('|')]+')'+'U[{0},{1}]'+ '('+A[1]+')'
+         elif ( op2 == 'G') or (op2 == 'F') or ((op2 =='<') and (size(formula2)==1)) or ((op2 =='>') and (size(formula2)==1))  or ((op2 == 'not' and size(formula2)==1)):
+             phi1 = '('+A[0]+')'+ 'U[{},{}]' + '('+formula2+')'
+             phi2 = '('+formula2+')' + 'U[{},{}]' + '('+A[1]+')'
+         elif op2 == 'U':
              B = re.split(r'U\[\d+,\d+\]',formula2)
-             phi1 = (A[0]) + 'U[{},{}]' +(B[1]) 
-             phi2 = (B[0]) + 'U[{},{}]' +(A[1])     
-         phi1 = GP_opt(phi1,op[0], x_reg,y_reg,x_anom,y_anom,rng_mod) 
-         phi2 = GP_opt(phi2,op[1], x_reg,y_reg,x_anom,y_anom,rng_mod)    
-     elif ('G' in formula1) or ('F' in formula1) or (('<' in formula1) and size(formula1)==1) or (('>' in formula1) and size(formula1)==1):
-         if ('G' in formula1) or ('F' in formula1) or (('<' in formula1) and size(formula1)==1) or (('>' in formula1) and size(formula1)==1):
+             phi1 = '('+A[0]+')' + 'U[{},{}]' +'('+B[1]+')' 
+             phi2 = '('+B[0]+')' + 'U[{},{}]' +'('+A[1]+')'     
+             phi1 = GP_opt(phi1,op[0], x_reg,y_reg,x_anom,y_anom,rng_mod) 
+             phi2 = GP_opt(phi2,op[1], x_reg,y_reg,x_anom,y_anom,rng_mod)   
+         return [phi1,phi2,op]
+     elif ( op1 == 'G') or (op1 == 'F') or ((op1 =='<') and (size(formula2)==1)) or ((op1 =='>') and (size(formula2)==1))  or ((op1 == 'not' and size(formula2)==1)):
+         if ( op2 == 'G') or (op2 == 'F') or ((op2 =='<') and (size(formula2)==1)) or ((op2 =='>') and (size(formula2)==1))  or ((op2 == 'not' and size(formula2)==1)):
              op = ['&','|']
-             phi1 = (formula1) + op[0] + (formula2)
-             phi2 = (formula1) + op[1] + (formula2)
-         elif ('U' in formula2):
+             phi1 = '('+formula1+')' + op[0] + '('+formula2+')'
+             phi2 = '('+formula1+')' + op[1] + '('+formula2+')'
+         elif op2 == 'U':
              A = re.split(r'U\[\d+,\d+\]',formula2)
-             phi1 = (formula1) + op[0] + (A[1])
-             phi2 = (formula1) + op[1] + (A[0])
-         elif ('&' in formula2):
-             phi1 = (formula1) + op[0] + (formula2[formula2.find('&')+1:])
-             phi2 = (formula1) + op[1] + (formula2[:formula2.find('&')])            
-         elif ('|' in formula2):
-             phi1 = (formula1 + op[0]) + (formula2[formula2.find('|')+1:])
-             phi2 = (formula1 + op[1]) + (formula2[:formula2.find('|')])
+             phi1 = '('+formula1+')' + op[0] + '('+A[1]+')'
+             phi2 = '('+formula1+')' + op[1] + '('+A[0]+')'
+         elif op2 == '&':
+             phi1 = '('+formula1+')' + op[0] + '('+formula2[formula2.find('&')+1:]+')'
+             phi2 = '('+formula1+')' + op[1] + '('+formula2[:formula2.find('&')]+')'            
+         elif op2 == '|':
+             phi1 = '('+formula1+')' + op[0] + '('+formula2[formula2.find('|')+1:]+')'
+             phi2 = '('+formula1+')' + op[1] + '('+formula2[:formula2.find('|')]+')'
+         return [phi1,phi2,op]
+         
      else:
-         op = ['not','not']
-         phi1 = 'not('+formula1+')'
-         phi2 = 'not('+formula1+')'
-     return [phi1,phi2,op]
+#         op = ['not','not']
+#         phi1 = 'not('+formula1+')'
+#         phi2 = 'not('+formula2+')'
+#         return [phi1,phi2,op]
+          return [formula1,formula2,[op1,op2]]
 
 
 ################################    GA    ############################################
@@ -346,7 +357,7 @@ def GA(x_reg, y_reg, x_anom, y_anom, rng_mod):
      count = 0
      MCR = 100
      while MCR>0.05:       
-         print('-------------Genetic Algorithm iteration ',count,'--------------') 
+         print('Genetic Algorithm iteration ',count,'--------------') 
          pop_df_sechalf = pd.DataFrame(columns=['Name', 'Formula', 'Operation'])
          for i in range(26, 51):
              random.seed()
@@ -363,6 +374,7 @@ def GA(x_reg, y_reg, x_anom, y_anom, rng_mod):
                  pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i+1),
                                          'Formula': X[1], 
                                          'Operation': X[2][1]}, ignore_index=True) 
+                 print(X[0],X[1])
              else:
                 print('*Mutation*')
                 phi,op = mutate(num[0], pop_df_new)
@@ -370,6 +382,7 @@ def GA(x_reg, y_reg, x_anom, y_anom, rng_mod):
                 pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i),
                                          'Formula': phi, 
                                          'Operation': op}, ignore_index=True) 
+                print(phi)
             
          pd_new = pd.concat([pop_df_new, pop_df_sechalf], ignore_index=True, axis=0)
          pop_df_new = top_half(evaluate(pd_new))
