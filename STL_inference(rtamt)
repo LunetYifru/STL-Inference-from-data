@@ -247,7 +247,7 @@ def mutate(index, pop_df_new):
      elif op1 == 'U':
          op = 'U'
          A = re.split(r'U\[\d+,\d+\]',formula)
-         phi = '('+A[1]+')'+'U[{0},{1}]'+'('A[0]+')'
+         phi = '('+A[1]+')'+'U[{0},{1}]'+'('+A[0]+')'
          phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod) 
          return phi,op
      else:
