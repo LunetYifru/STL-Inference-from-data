@@ -318,12 +318,12 @@ def crossover(index1,index2,pop_df_new):
              B = re.split(r'U\[\d+,\d+\]',formula2)
              phi1 = A[0] + 'U[{},{}]' +B[1]
              phi2 = B[0]+ 'U[{},{}]' +A[1]    
-             phi1 = GP_opt(phi1,op[0], x_reg,y_reg,x_anom,y_anom,rng_mod) 
-             phi2 = GP_opt(phi2,op[1], x_reg,y_reg,x_anom,y_anom,rng_mod)   
+         phi1 = GP_opt(phi1,op[0], x_reg,y_reg,x_anom,y_anom,rng_mod) 
+         phi2 = GP_opt(phi2,op[1], x_reg,y_reg,x_anom,y_anom,rng_mod)   
          return [phi1,phi2,op]
      elif ( op1 == 'G') or (op1 == 'F') or ((op1 =='<') and (size(formula2)==1)) or ((op1 =='>') and (size(formula2)==1))  or ((op1 == 'not' and size(formula2)==1)):
+         op = ['&','|']
          if ( op2 == 'G') or (op2 == 'F') or ((op2 =='<') and (size(formula2)==1)) or ((op2 =='>') and (size(formula2)==1))  or ((op2 == 'not' and size(formula2)==1)):
-             op = ['&','|']
              phi1 = '('+formula1+')' + op[0] + '('+formula2+')'
              phi2 = '('+formula1+')' + op[1] + '('+formula2+')'
          elif op2 == 'U':
