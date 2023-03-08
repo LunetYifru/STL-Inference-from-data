@@ -21,11 +21,11 @@ import rtamt
 
 
 def robustness(dataset, spec):
-    rob = spec.evaluate(dataset)
+    rob = spec.evaluate(['x',dataset[0]],['y',dataset[1]])
     return [i[1] for i in rob]
 
 def specification(spec_str):
-    spec = rtamt.STLSpecification(language=rtamt.Language.PYTHON)
+    spec = rtamt.StlDenseTimeSpecification()
     spec.name = 'STL discrete-time online Python monitor'
     spec.declare_var('x', 'float')
     spec.declare_var('y', 'float')
@@ -33,12 +33,14 @@ def specification(spec_str):
     spec.parse()
     return spec
 
+
 def signal(x,y,i):
-    dataset = {
-            'time': [k for k in x.index][::-1],
-            'x': [j for j in x[i]],
-            'y': [j for j in y[i]]}
-    return dataset
+    A = []
+    B = []
+    for j in range(len(x[i])):
+        A.append([j,x[i][j]])
+        B.append([j,y[i][j]])
+    return (A,B)
     
   
 def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
@@ -73,13 +75,9 @@ def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
                      rob_r = min(robustness(signal(x_reg,y_reg,i), specification(phi)))
                      rob_a = min(robustness(signal(x_anom,y_anom,i), specification(phi)))
 
-                 elif operation == 'G':
-                     rob_r = min(robustness(signal(x_reg,y_reg,i), specification(phi)))
-                     rob_a = min(robustness(signal(x_anom,y_anom,i), specification(phi)))
-
-                 elif operation == 'F' or operation == 'U':
-                     rob_r = max(robustness(signal(x_reg,y_reg,i), specification(phi)))
-                     rob_a = max(robustness(signal(x_anom,y_anom,i), specification(phi)))
+                 elif operation == 'G' or operation == 'F' or operation == 'U':
+                     rob_r =robustness(signal(x_reg,y_reg,i), specification(phi))[0]
+                     rob_a = robustness(signal(x_anom,y_anom,i), specification(phi))[0]
 
                  rob_reg = np.append(rob_reg, rob_r)
                  rob_anom = np.append(rob_anom, rob_a)
