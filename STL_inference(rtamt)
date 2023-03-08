@@ -4,28 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import re
-from GPyOptPars import GP_opt
-
-###################    Utility Functions for STL   ##############################
-def robustness(dataset, spec):
-    rob = spec.evaluate(dataset)
-    return [i[1] for i in rob]
-
-def specification(spec_str):
-    spec = rtamt.STLSpecification(language=rtamt.Language.PYTHON)
-    spec.name = 'STL discrete-time online Python monitor'
-    spec.declare_var('x', 'float')
-    spec.declare_var('y', 'float')
-    spec.spec = spec_str
-    spec.parse()
-    return spec
-
-def signal(x,y,i):
-    dataset = {
-            'time': [k for k in x.index][::-1],
-            'x': [j for j in x[i]],
-            'y': [j for j in y[i]]}
-    return dataset
+from GPyOptPars import GP_opt,robustness,specification,signal
     
 
 ###################    Import Data    ##############################
@@ -117,15 +96,11 @@ def compute_rob(phi,operation):
     rob_anom = np.empty(0)
     
     for i in range(len(x_reg.columns)):
-        if operation == '>' or operation == '<':
-            rob_r = min(robustness(signal(x_reg,y_reg,i), specification(phi)))
-            rob_a = min(robustness(signal(x_anom,y_anom,i), specification(phi)))
+        if operation == 'F' or operation == 'U' or operation == 'G':
+            rob_r = robustness(signal(x_reg,y_reg,i), specification(phi))[0]
+            rob_a = robustness(signal(x_anom,y_anom,i), specification(phi))[0]
 
-        elif operation == 'F' or operation == 'U':
-            rob_r = max(robustness(signal(x_reg,y_reg,i), specification(phi)))
-            rob_a = max(robustness(signal(x_anom,y_anom,i), specification(phi)))
-
-        elif operation == 'G' or operation == '&' or operation == '|' or operation == 'not':
+        elif operation == '&' or operation == '|' or operation == 'not' or operation == '>' or operation == '<':
             rob_r = min(robustness(signal(x_reg,y_reg,i), specification(phi)))
             rob_a = min(robustness(signal(x_anom,y_anom,i), specification(phi)))
                  
@@ -154,11 +129,11 @@ def size(formula):
     return size
 
 def fitness_func(results, size):
-    if size < 3:
+    if size < 4:
        Fitness_score = results[1]+results[0]
     else:
         # decrease robustness by (size-2)X10 % for sizes greater than 2
-        Fitness_score = (results[1]+results[0])*(1-((size-3)/10))
+        Fitness_score = (results[1]+results[0])*(1-((size-4)/10))
     return Fitness_score
  
 # ###################      Compute robustness, size, and fitness       ###########################
@@ -267,11 +242,11 @@ def crossover(index1,index2,pop_df_new):
          op = ['&','&']
          if (op2 =='|' ):
              phi1 = formula1[:formula1.find('&')]+op[0]+formula2[formula2.find('|')+1:]
-             phi2 = formula1[formula1.find('&')+1:]+op[1]+formula2[:formula1.find('|')]
+             phi2 = formula1[formula1.find('&')+1:]+op[1]+formula2[:formula2.find('|')]
              
          elif ( op2 =='&'):
              phi1 = formula1[:formula1.find('&')]+op[0]+formula2[formula2.find('&')+1:]
-             phi2 =  formula1[formula1.find('&')+1:]+op[1]+ formula2[:formula1.find('&')]
+             phi2 =  formula1[formula1.find('&')+1:]+op[1]+ formula2[:formula2.find('&')]
              
          elif ( op2 == 'G') or (op2 == 'F') or ((op2 =='<') and (size(formula2)==1)) or ((op2 =='>') and (size(formula2)==1))  or ((op2 == 'not' and size(formula2)==1)):
              phi1 = formula1[:formula1.find('&')]+op[0]+'('+formula2+')'
@@ -287,11 +262,11 @@ def crossover(index1,index2,pop_df_new):
          op = ['|','|']
          if ( op2 =='&'):
              phi1 = formula1[:formula1.find('|')]+op[0]+formula2[formula2.find('&')+1:]
-             phi2 = formula1[formula1.find('|')+1:]+op[1]+formula2[:formula1.find('&')]
+             phi2 = formula1[formula1.find('|')+1:]+op[1]+formula2[:formula2.find('&')]
              
          elif (op2 =='|' ):
              phi1 = formula1[:formula1.find('|')]+op[0]+formula2[formula2.find('|')+1:]
-             phi2 =  formula1[formula1.find('|')+1:]+op[1]+ formula2[:formula1.find('|')]
+             phi2 =  formula1[formula1.find('|')+1:]+op[1]+ formula2[:formula2.find('|')]
              
          elif ( op2 == 'G') or (op2 == 'F') or ((op2 =='<') and (size(formula2)==1)) or ((op2 =='>') and (size(formula2)==1))  or ((op2 == 'not' and size(formula2)==1)):
              phi1 = formula1[:formula1.find('|')]+op[0]+'('+formula2+')'
@@ -387,8 +362,7 @@ def GA(x_reg, y_reg, x_anom, y_anom, rng_mod):
          pop_df_new = top_half(evaluate(pd_new))
          print(pop_df_new.iloc[:10]['Results'])
          R = pop_df_new.iloc[0]['Results'][0] + pop_df_new.iloc[0]['Results'][1]
-         R = R/2000
-         MCR = 1-R
+         MCR = R/2000
          print('MCR is: ', MCR)
          count+=1 
         
