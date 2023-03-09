@@ -59,14 +59,15 @@ def initialize(x_reg,y_reg,x_anom,y_anom,rng_mod):
  ##########  initialization of formulae with binary operators ##########
     pop_ext = {}
     N = []  
-    for i in range(16, 40):
+    for i in range(16, 50):
         random.seed()
         rand = random.randint(1, 2) 
         
         num = random.sample(range(0, 16), 2) 
-        while ('x' in pop_df.iloc[num[0]]['Formula'] and 'x' in pop_df.iloc[num[1]]['Formula']) or ('y' in pop_df.iloc[num[0]]['Formula'] and 'y' in pop_df.iloc[num[1]]['Formula']) or (num in N):
-               num = random.sample(range(0, 11), 2)        
-
+#        while ('x' in pop_df.iloc[num[0]]['Formula'] and 'x' in pop_df.iloc[num[1]]['Formula']) or ('y' in pop_df.iloc[num[0]]['Formula'] and 'y' in pop_df.iloc[num[1]]['Formula']) or (num in N):
+#               num = random.sample(range(0, 11), 2)        
+        while num in N:
+            num = random.sample(range(0, 16), 2) 
         N.append(num)
         print('num:',num,' and N:',N)
         if rand == 1:
@@ -117,9 +118,9 @@ def compute_rob(phi,operation):
     
     results = [pos, neg]
     print(results)
-    # rob_diff = np.absolute(np.average(rob_reg) - np.average(rob_anom))
-    
+    # rob_diff = np.absolute(np.average(rob_reg) - np.average(rob_anom))   
     return results
+
 def size(formula):
     ops = '<>FG&|Un'
     size = 0
@@ -170,16 +171,14 @@ def rank(pop_df_evaluated):
     return pop_df_ranked
 
 
-####################       New generation parents (Top 25)   ####################
+####################       New generation parents (Top 25)   ################
 def top_half(pop_df_ranked):
-    print('Top half of population...')
     pop_df_new = pop_df_ranked.head(25)
 #    print(pop_df_new.head(10))
     return pop_df_new
 
-pop_df_new = top_half(rank(evaluate(initialize(x_reg, y_reg, x_anom, y_anom, rng_mod))))
 #print(XX)
-# ###############################   Mutation and Crossover Functions   ###########
+# ##########################  Mutation and Crossover Functions   ###########
 
 def mutate(index, pop_df_new):
      formula = pop_df_new.iloc[index]['Formula']
@@ -314,10 +313,6 @@ def crossover(index1,index2,pop_df_new):
          return [phi1,phi2,op]
          
      else:
-#         op = ['not','not']
-#         phi1 = 'not('+formula1+')'
-#         phi2 = 'not('+formula2+')'
-#         return [phi1,phi2,op]
           return [formula1,formula2,[op1,op2]]
 
 
@@ -330,6 +325,7 @@ def GA(x_reg, y_reg, x_anom, y_anom, rng_mod):
      pop_df_new = top_half(pop_df_ranked)
      count = 1
      MCR = 100
+     N = []
      while MCR>0.05:       
          print('Genetic Algorithm iteration ',count,'--------------') 
          pop_df_sechalf = pd.DataFrame(columns=['Name', 'Formula', 'Operation'])
@@ -337,6 +333,9 @@ def GA(x_reg, y_reg, x_anom, y_anom, rng_mod):
              random.seed()
              n = random.random()
              num = random.sample(range(0,25), 2)
+             while num in N:
+                 num = random.sample(range(0,25), 2)
+             N.append(num)
              if n > 0.5:
                  print('*Crossover*')
 #                 print('Random formula numbers are:', num)
@@ -348,7 +347,6 @@ def GA(x_reg, y_reg, x_anom, y_anom, rng_mod):
                  pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i+1),
                                          'Formula': X[1], 
                                          'Operation': X[2][1]}, ignore_index=True) 
-                 print(X[0],X[1])
              else:
                 print('*Mutation*')
                 phi,op = mutate(num[0], pop_df_new)
@@ -356,19 +354,19 @@ def GA(x_reg, y_reg, x_anom, y_anom, rng_mod):
                 pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i),
                                          'Formula': phi, 
                                          'Operation': op}, ignore_index=True) 
-                print(phi)
             
          pd_new = pd.concat([pop_df_new, pop_df_sechalf], ignore_index=True, axis=0)
          pop_df_new = top_half(evaluate(pd_new))
          print(pop_df_new.iloc[:10]['Results'])
          R = pop_df_new.iloc[0]['Results'][0] + pop_df_new.iloc[0]['Results'][1]
-         MCR = R/2000
+         MCR = 1 - (R/2000)
          print('MCR is: ', MCR)
          count+=1 
         
      pop_df_final = pop_df_new  
-     print('----------Final Population-----------\n',pop_df_final.head(10))
-     print(pop_df_final.iloc[0])
+     print('----------Final Population (10)-----------\n',pop_df_final.head(10))
+     print('----------Top 5-----------\n',pop_df_final.iloc[:,[2,6]])
+     print('----------Best Individual-----------\n',pop_df_final.iloc[0])
      return pop_df_final
         
  
