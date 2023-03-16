@@ -1,384 +1,178 @@
-import random
-import rtamt
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import re
-from GPyOptPars import GP_opt,robustness,specification,signal
+import random
+import matplotlib.pyplot as plt
+import matplotlib
+
+import signal_tl as stl
+
+grid_size = 6
+
+phi1 = stl.Predicate('x')>= 4
+phi2 = stl.Predicate('y')>= 4 
+
+phi3 = stl.Predicate('x') >= 2
+phi4 = stl.Predicate('x') < 5
+phi5 = stl.Predicate('y') >= 2
+phi6 = stl.Predicate('y') < 3
+
+phi7 = stl.Predicate('x') >=4
+phi8 = stl.Predicate('x') <5
+phi9 = stl.Predicate('y') >=3 
+phi10 = stl.Predicate('y') <4
+
+
+phi_goal = phi1 & phi2
+phi_obs1 = phi3 & phi4 & phi5 & phi6 
+phi_obs2 = phi7 & phi8 & phi9 & phi10
+phi_obs = phi_obs1 | phi_obs2
+spec = (phi_goal) & stl.Not(phi_obs)
+print('STL :',spec)
+
+def signal(state):
+    t = [1]        
+    x = [state[0]]
+    y = [state[1]]
+    signals = {'x' : stl.Signal(x,t) ,'y': stl.Signal(y,t)}
+    return signals
+
+def state_transition(current_state, action):
     
-
-###################    Import Data    ##############################
-x_reg = pd.read_excel(r'x1_reg.xlsx', header=None)
-y_reg = pd.read_excel(r'x2_reg.xlsx', header=None)
-x_anom = pd.read_excel(r'x1_anom.xlsx', header=None)
-y_anom = pd.read_excel(r'x2_anom.xlsx', header=None)
-
-rng_x_reg = (min(x_reg.min()), max(x_reg.max()))
-rng_y_reg = (min(y_reg.min()), max(y_reg.max()))
-rng_x_anom = (min(x_anom.min()), max(x_anom.max()))
-rng_y_anom = (min(y_anom.min()), max(y_anom.max()))
-rng = [rng_x_reg, rng_y_reg, rng_x_anom, rng_y_anom, len(x_reg)]
-rng_mod = [min(rng_x_reg[0],rng_y_reg[0],rng_x_anom[0],rng_y_anom[0]), max(rng_x_reg[1],rng_y_reg[1],rng_x_anom[1],rng_y_anom[1]),len(x_reg)]
-
-
-
-
-
- ###########  Random initialization of primary population and GP_opt to update parameters  ##########
-def initialize(x_reg,y_reg,x_anom,y_anom,rng_mod):
-    print('-------------Initializing population--------------')
-    population = {}
-    pop_df = pd.DataFrame()
-    op = ['>','<','>','<','G','G','G','G','F','F','F','F','U','U','U','U']
+    if action == (0,-1):#down
+        suggested_state = (current_state[0] + action[0], max(0,current_state[1] + action[1]))
+    elif action == (0,1):#up
+        suggested_state = (current_state[0] + action[0], min(5,current_state[1] + action[1]))
+    elif action ==(-1,0):#left
+        suggested_state = (max(0,current_state[0] + action[0]), current_state[1] + action[1])
+    elif action == (1,0):#right
+        suggested_state = (min(5,current_state[0] + action[0]), current_state[1] + action[1])
     
-    population['phi1'] = GP_opt('x > {0:.2f}',op[0], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi2'] = GP_opt('x < {0:.2f}',op[1], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi3'] = GP_opt('y > {0:.2f}',op[2], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi4'] = GP_opt('y < {0:.2f}',op[3], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi5'] = GP_opt('G[{0},{1}](x > {2:.2f})',op[4], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi6'] = GP_opt('G[{0},{1}](x < {2:.2f})',op[5], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi7'] = GP_opt('G[{0},{1}](y > {2:.2f})',op[6], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi8'] = GP_opt('G[{0},{1}](y < {2:.2f})',op[7], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi9'] = GP_opt('F[{0},{1}](x > {2:.2f})',op[8], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi10'] = GP_opt('F[{0},{1}](x < {2:.2f})',op[9], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi11'] = GP_opt('F[{0},{1}](y > {2:.2f})',op[10], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi12'] = GP_opt('F[{0},{1}](y < {2:.2f})',op[11], x_reg,y_reg,x_anom,y_anom,rng_mod)   
-    population['phi13'] = GP_opt('(x<{2:.2f})U[{0},{1}](y>{3:.2f})',op[12], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi14'] = GP_opt('(x>{2:.2f})U[{0},{1}](y<{3:.2f})',op[13], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi15'] = GP_opt('(y>{2:.2f})U[{0},{1}](x>{3:.2f})',op[14], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi16'] = GP_opt('(y<{2:.2f})U[{0},{1}](x<{3:.2f})',op[15], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    # up, down,right, left
+    states = [(current_state[0] + 0, min(5,current_state[1] + 1)), (current_state[0] + 0, max(0,current_state[1]  - 1)), ((min(5,current_state[0] + 1), current_state[1] + 0)) ,(max(0,current_state[0] -1), current_state[1] + 0)]
+      
+    num_states = len(states)
+    transition_probabilities = [0.8 if state == suggested_state else (0.2/(num_states-1)) for state in states]
+    next_state = random.choices(states,weights=transition_probabilities) 
+    return next_state[0]
+
+# Define the actions
+actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # up, down,right, left
+
+# Initialize Q-table
+Q = np.zeros((grid_size, grid_size, len(actions)))
+
+# Define the training parameters
+alpha = 0.1
+gamma = 0.9
+epsilon = 0.9
+max_steps = 10
+num_episodes = 10000
+er = []
+#reward = -10
+
+# Train the agent
+for episode in range(num_episodes):
+
+    # Initialize the state
+    current_state = (0,0)
+    epsilon = np.exp(-0.005*episode)
+    episode_reward = 0
+
+    # Terminate the episode if the agent reaches the goal or the maximum number of steps is reached
+    for step in range(max_steps):
+        # Choose an action using epsilon-greedy exploration
+        if random.uniform(0, 1) < epsilon: #explore
+            action = random.choice(actions)
+        else:
+            action = actions[np.argmax(Q[current_state[0], current_state[1]])] #exploit
         
+        # Determine the next state following the transition probablities
+       
+        next_state = state_transition(current_state,action)
 
-    pop_df['Name'] = population.keys()
-    pop_df['Formula'] = population.values()
-    pop_df['Operation'] = op
-    print(pop_df.head(11))
-
-
-    
- ##########  initialization of formulae with binary operators ##########
-    pop_ext = {}
-    N = []  
-    for i in range(16, 50):
-        random.seed()
-        rand = random.randint(1, 2) 
+        ################### STL Rewrad ##################
+        signals = signal(next_state)
+        rob_goal = stl.compute_robustness(phi_goal,signals)
+        rob_obs = stl.compute_robustness(phi_obs,signals)
+        rob = stl.compute_robustness(spec,signals)
         
-        num = random.sample(range(0, 16), 2) 
-#        while ('x' in pop_df.iloc[num[0]]['Formula'] and 'x' in pop_df.iloc[num[1]]['Formula']) or ('y' in pop_df.iloc[num[0]]['Formula'] and 'y' in pop_df.iloc[num[1]]['Formula']) or (num in N):
-#               num = random.sample(range(0, 11), 2)        
-        while num in N:
-            num = random.sample(range(0, 16), 2) 
-        N.append(num)
-        if rand == 1:
-             op = '&'
-             pop_ext['phi' + str(i)] = '('+pop_df.iloc[num[0]]['Formula']+')'+ op +'('+pop_df.iloc[num[1]]['Formula']+')'
-        elif rand == 2:
-             op = '|'
-             pop_ext['phi' + str(i)] = '('+pop_df.iloc[num[0]]['Formula']+')'+ op +'('+pop_df.iloc[num[1]]['Formula']+')'
-#        elif rand == 3:
-#             op = 'not'
-#             pop_ext['phi' + str(i)] = op +'('+pop_df.iloc[num[0]]['Formula']+')'
-
-        print(pop_ext)        
-        pop_df = pop_df.append({'Name': 'phi' + str(i),'Formula': pop_ext['phi'+ str(i)],'Operation': op}, ignore_index=True)   
-
-    population = {**population, **pop_ext}    
-    print('Length of DF ---', len(pop_df))    
-    return pop_df
+        if rob_obs.at(0) >=0:
+            reward = rob.at(0) -100
+            next_state = current_state
+        elif rob_goal.at(0) >=0:
+            reward = rob.at(0) + 100
+        else:
+            reward = rob.at(0)
+        
+        episode_reward+= reward   
+        
+        # Update the Q-value  
+        # Q[current_state[0], current_state[1], actions.index(action)] = Q[current_state[0], current_state[1], actions.index(action)] + alpha * (reward + gamma * np.max(Q[next_state[0], next_state[1]]) - Q[current_state[0], current_state[1], actions.index(action)])
+        
+        # Update the state
+        current_state = next_state
+#        if reward >= 100:
+#            break
+    er.append(episode_reward)
+    # Update the Q-values at the end of the episode using the cumulative episode reward
+    Q[current_state[0], current_state[1], actions.index(action)] = Q[current_state[0], current_state[1], actions.index(action)] + alpha * (episode_reward - Q[current_state[0], current_state[1], actions.index(action)])
 
 
-# ##############################     computing parameters for formula           ##################
+print('here')        
+# Generate 500 rollout traces
+rollout_traces = []
+for i in range(20):
+    current_state = (0, 0)
+    rollout = [current_state]
+    rob_goal = -1
+    while rob_goal < 0:
+        print(current_state)
+        action = actions[np.argmax(Q[current_state[0], current_state[1]])]
+        next_state = state_transition(current_state,action)
 
-def compute_rob(phi,operation): 
-    
-#    print('fromula: ', phi, operation)
-    
-    rob_reg = np.empty(0)
-    rob_anom = np.empty(0)
-    
-    for i in range(len(x_reg.columns)):
-        if operation == 'F' or operation == 'U' or operation == 'G':
-            rob_r = robustness(signal(x_reg,y_reg,i), specification(phi))[0]
-            rob_a = robustness(signal(x_anom,y_anom,i), specification(phi))[0]
-
-        elif operation == '&' or operation == '|' or operation == 'not' or operation == '>' or operation == '<':
-            rob_r = min(robustness(signal(x_reg,y_reg,i), specification(phi)))
-            rob_a = min(robustness(signal(x_anom,y_anom,i), specification(phi)))
-                 
-
-        rob_reg = np.append(rob_reg, rob_r)
-        rob_anom = np.append(rob_anom, rob_a)
-    
-    pos = 0
-    neg = 0
-    for i in rob_reg:
-        if i>= 0: pos +=1 
-    for i in rob_anom:
-         if i< 0:neg +=1
-    
-    results = [pos, neg]
-#    print(results)
-    # rob_diff = np.absolute(np.average(rob_reg) - np.average(rob_anom))   
-    return results
-
-def size(formula):
-    ops = '<>FG&|Un'
-    size = 0
-    for i in formula:
-        if i in ops:
-            size += 1
-    return size
-
-def fitness_func(results, size):
-    if size < 4:
-       Fitness_score = results[1]+results[0]
-    else:
-        # decrease robustness by (size-2)X10 % for sizes greater than 2
-        Fitness_score = (results[1]+results[0])*(1-((size-4)/10))
-    return Fitness_score
- 
-# ###################      Compute robustness, size, and fitness       ###########################
-
-def evaluate(pop_df):
-     print('Evaluating formulae in population...')
-     pop_size = []
-     pop_fit = []
-     pop_res = []
-     for i in range(len(pop_df)):
-         formula = pop_df.iloc[i]['Formula']
-         operation = pop_df.iloc[i]['Operation']
-         pop_res.append(compute_rob(formula, operation))
-         pop_size.append(size(formula))
-         pop_fit.append(fitness_func(pop_res[-1], pop_size[-1]))
-         
-     pop_df['Size'] = pop_size
-     pop_df['Fitness'] = pop_fit
-     pop_df['Results'] = pop_res
-     pop_df_evalulated = pop_df
-    
-     return pop_df_evalulated   
+        signals = signal(next_state)
+        rob_obs = (stl.compute_robustness(phi_obs,signals)).at(0)
+        rob_goal = (stl.compute_robustness(phi_goal,signals)).at(0)
+        
+        if rob_obs >=0:
+            next_state = current_state
+            
+        current_state = next_state
+        rollout.append(current_state)
   
-#####################      Rearrange  population with descending order of fitness  ############
-
-def rank(pop_df_evaluated):
-    pop_df_evaluated['Rank'] = pop_df_evaluated['Fitness'].rank(ascending=0)
-    pop_df_evaluated = pop_df_evaluated.set_index('Rank')
-    pop_df_evaluated = pop_df_evaluated.sort_index()
-    pop_df_evaluated.reset_index(inplace=True)
-    pop_df_evaluated.drop(columns=['Rank'])
-    pop_df_ranked = pop_df_evaluated
-    return pop_df_ranked
-
-
-####################       New generation parents (Top 25)   ################
-def top_half(pop_df_ranked):
-    pop_df_new = pop_df_ranked.head(25)
-#    print(pop_df_new.head(10))
-    return pop_df_new
-
-#print(XX)
-# ##########################  Mutation and Crossover Functions   ###########
-
-def mutate(index, pop_df_new):
-     formula = pop_df_new.iloc[index]['Formula']
-     op1 = pop_df_new.iloc[index]['Operation']
-     print('formula is: ',formula,op1)
-            
-     if op1 == '>' and size(formula) == 1:
-         op = '<'
-         phi=formula[:formula.find('>')]+op+'{0:.2f}'
-         phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)
-         return phi,op 
-     elif op1 == '<' and size(formula) == 1:
-         op = '>'
-         phi=formula[:formula.find('<')]+op+'{0:.2f}'
-         phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)
-         return phi,op        
-     elif op1 == 'F':
-         op ='G'
-         print(op)
-         phi=formula.replace(re.findall(re.escape('F')+"(.*)"+re.escape(']'),formula)[0],'[{},{}',1).replace('F',op,1)
-         phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)     # alter temporal operators
-         return phi,op
-     elif op1 == 'G' :
-         op ='F'
-         print(op)
-         phi=formula.replace(re.findall(re.escape('G')+"(.*)"+re.escape(']'),formula)[0],'[{},{}',1).replace('G',op,1)
-         phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)
-         return phi,op
-     elif op1 == '&':
-         op = '|'
-         print(op)
-         phi = formula.replace('&',op,1)
-         return phi,op
-     elif op1 == '|':
-         op = '&'
-         print(op)
-         phi = formula.replace('|',op,1)
-         return phi,op
-     elif op1 == 'U':
-         op = 'U'
-         A = re.split(r'U\[\d+,\d+\]',formula)
-         
-         if size(A[0])==1 and size(A[1])==1:
-            digits = re.findall(r'(\d+\.?\d*|\.\d+)', formula)
-            replacements = ['{2:.2f}','{0}','{1}','{3:.2f}']
-            for i in range(4):
-                d = digits[i]
-                formula = re.sub(fr'\b{d}(?!:)\b', replacements[i], formula)
-            phi = formula
-         else:
-            phi = A[1]+'U[{0},{1}]'+A[0]
-         phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)              
-         return phi,op
-     else:
-         return formula,op1
-
-#
-def crossover(index1,index2,pop_df_new):
-     formula1 = pop_df_new.iloc[index1]['Formula']
-     formula2 = pop_df_new.iloc[index2]['Formula']
-     op1 = pop_df_new.iloc[index1]['Operation']
-     op2 = pop_df_new.iloc[index2]['Operation']
-     
-     print(formula1)
-     print(formula2)
-     
-     if ((op1 == '<') or (op1 == '>')) and ((op2 == '<') or (op2 == '>')):
-         phi1 = formula1.split(op1)[0]+op1+'{2:.2f})U[{0},{1}]'+formula2.split(op2)[0]+op2+'{3:.2f}'
-
-     if op1 =='&' :
-         op = ['&','&']
-         if (op2 =='|' ):
-             phi1 = formula1[:formula1.find('&')]+op[0]+formula2[formula2.find('|')+1:]
-             phi2 = formula1[formula1.find('&')+1:]+op[1]+formula2[:formula2.find('|')]
-             
-         elif ( op2 =='&'):
-             phi1 = formula1[:formula1.find('&')]+op[0]+formula2[formula2.find('&')+1:]
-             phi2 =  formula1[formula1.find('&')+1:]+op[1]+ formula2[:formula2.find('&')]
-             
-         elif ( op2 == 'G') or (op2 == 'F') or ((op2 =='<') and (size(formula2)==1)) or ((op2 =='>') and (size(formula2)==1))  or ((op2 == 'not' and size(formula2)==1)):
-             phi1 = formula1[:formula1.find('&')]+op[0]+'('+formula2+')'
-             phi2 = formula1[formula1.find('&')+1:]+op[1]+'('+formula2+')'
-             
-         elif op2 == 'U':
-             A = re.split(r'U\[\d+,\d+\]',formula2)
-             phi1 = formula1[:formula1.find('&')]+op[0]+A[1]
-             phi2 = A[0]+op[1]+formula1[formula1.find('&')+1:]
-             
-         return [phi1,phi2,op]
-     elif op1 == '|':
-         op = ['|','|']
-         if ( op2 =='&'):
-             phi1 = formula1[:formula1.find('|')]+op[0]+formula2[formula2.find('&')+1:]
-             phi2 = formula1[formula1.find('|')+1:]+op[1]+formula2[:formula2.find('&')]
-             
-         elif (op2 =='|' ):
-             phi1 = formula1[:formula1.find('|')]+op[0]+formula2[formula2.find('|')+1:]
-             phi2 =  formula1[formula1.find('|')+1:]+op[1]+ formula2[:formula2.find('|')]
-             
-         elif ( op2 == 'G') or (op2 == 'F') or ((op2 =='<') and (size(formula2)==1)) or ((op2 =='>') and (size(formula2)==1))  or ((op2 == 'not' and size(formula2)==1)):
-             phi1 = formula1[:formula1.find('|')]+op[0]+'('+formula2+')'
-             phi2 = formula1[formula1.find('|')+1:]+op[1]+'('+formula2+')'
-             
-         elif op2 == 'U':
-             A = re.split(r'U\[\d+,\d+\]',formula2)
-             phi1 = formula1[:formula1.find('|')]+op[0]+A[1]
-             phi2 = A[0]+op[1]+formula1[formula1.find('|')+1:]
-         return [phi1,phi2,op]
-     elif op1 == 'U':
-         op = ['U','U']
-         A = re.split(r'U\[\d+,\d+\]',formula1)
-         if op2 =='&':
-             phi1 = A[0]+'U[{0},{1}]'+formula2[formula2.find('&')+1:]
-             phi2 = formula2[:formula2.find('&')]+'U[{0},{1}]'+A[1]
-         elif op2 =='|':
-             phi1 = A[0]+'U[{0},{1}]'+formula2[formula2.find('|')+1:]
-             phi2 = formula2[:formula2.find('|')]+'U[{0},{1}]'+A[1]
-         elif ( op2 == 'G') or (op2 == 'F') or ((op2 =='<') and (size(formula2)==1)) or ((op2 =='>') and (size(formula2)==1))  or ((op2 == 'not' and size(formula2)==1)):
-             phi1 =A[0]+ 'U[{},{}]' + '('+formula2+')'
-             phi2 = '('+formula2+')' + 'U[{},{}]' + A[1]
-         elif op2 == 'U':
-             B = re.split(r'U\[\d+,\d+\]',formula2)
-             phi1 = A[0] + 'U[{},{}]' +B[1]
-             phi2 = B[0]+ 'U[{},{}]' +A[1]    
-         phi1 = GP_opt(phi1,op[0], x_reg,y_reg,x_anom,y_anom,rng_mod) 
-         phi2 = GP_opt(phi2,op[1], x_reg,y_reg,x_anom,y_anom,rng_mod)   
-         return [phi1,phi2,op]
-     elif ( op1 == 'G') or (op1 == 'F') or ((op1 =='<') and (size(formula2)==1)) or ((op1 =='>') and (size(formula2)==1))  or ((op1 == 'not' and size(formula2)==1)):
-         op = ['&','|']
-         if ( op2 == 'G') or (op2 == 'F') or ((op2 =='<') and (size(formula2)==1)) or ((op2 =='>') and (size(formula2)==1))  or ((op2 == 'not' and size(formula2)==1)):
-             phi1 = '('+formula1+')' + op[0] + '('+formula2+')'
-             phi2 = '('+formula1+')' + op[1] + '('+formula2+')'
-         elif op2 == 'U':
-             A = re.split(r'U\[\d+,\d+\]',formula2)
-             phi1 = '('+formula1+')' + op[0] + A[1]
-             phi2 = '('+formula1+')' + op[1] + A[0]
-         elif op2 == '&':
-             phi1 = '('+formula1+')' + op[0] +formula2[formula2.find('&')+1:]
-             phi2 = '('+formula1+')' + op[1] + formula2[:formula2.find('&')]        
-         elif op2 == '|':
-             phi1 = '('+formula1+')' + op[0] + formula2[formula2.find('|')+1:]
-             phi2 = '('+formula1+')' + op[1] + formula2[:formula2.find('|')]
-         return [phi1,phi2,op]
-         
-     else:
-          return [formula1,formula2,[op1,op2]]
+    rollout_traces.append(rollout)
+    
+# Organize rollout traces into a dataset
+x_trace = []
+y_trace = []
+for i in range(len(rollout_traces)):
+    x_vals = []
+    y_vals = []
+    for j in rollout_traces[i]:
+        x_vals.append(j[0]+0.5)
+        y_vals.append(j[1]+0.5)
+    x_trace.append(x_vals)
+    y_trace.append(y_vals)
+    
+# Display the grid environment with the rollout traces in cyan, goal position in green, and obstacle in black
+# fig = plt.figure()
+for i in range(len(rollout_traces)):
+    fig = plt.figure()
+    goal = matplotlib.patches.Rectangle((4,4), 2, 2, color='green')
+    obstacle1 = matplotlib.patches.Rectangle((2,2), 3, 1, color='black')
+    obstacle2 = matplotlib.patches.Rectangle((4,3), 1, 1, color='black')
+    ax = fig.add_subplot(111)
+    ax.add_patch(goal)
+    ax.add_patch(obstacle1)
+    ax.add_patch(obstacle2)
+    # plt.plot(x_trace[i],y_trace[i],'*-')
+    plt.plot(x_trace[i],y_trace[i],'c*-')
+    plt.plot(x_trace[i][-1],y_trace[i][-1],'r*')
+    plt.grid()
+    plt.show()
+# plt.plot(x_trace[i],y_trace[i],'*-')
+# plt.grid()    
+# plt.show()
 
 
-################################    GA    ############################################
-def GA(x_reg, y_reg, x_anom, y_anom, rng_mod):
 
-     pop_df = initialize(x_reg, y_reg, x_anom, y_anom, rng_mod)
-     pop_df_evaluated = evaluate(pop_df)
-     pop_df_ranked = rank(pop_df_evaluated)
-     pop_df_new = top_half(pop_df_ranked)
-     count = 1
-     MCR = 100
-     N = []
-     while MCR>0.05:       
-         print('Genetic Algorithm iteration ',count,'--------------') 
-         pop_df_sechalf = pd.DataFrame(columns=['Name', 'Formula', 'Operation'])
-         for i in range(26, 51):
-             random.seed()
-             n = random.random()
-             num = random.sample(range(0,25), 2)
-             while num in N:
-                 num = random.sample(range(0,25), 2)
-             N.append(num)
-             if n > 0.5:
-                 print('*Crossover*')
-#                 print('Random formula numbers are:', num)
-                 X = crossover(num[0],num[1],pop_df_new)
-                
-                 pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i),
-                                         'Formula': X[0], 
-                                         'Operation': X[2][0]}, ignore_index=True) 
-                 pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i+1),
-                                         'Formula': X[1], 
-                                         'Operation': X[2][1]}, ignore_index=True) 
-             else:
-                print('*Mutation*')
-                phi,op = mutate(num[0], pop_df_new)
-                
-                pop_df_sechalf = pop_df_sechalf.append({'Name': 'phi_' + str(i),
-                                         'Formula': phi, 
-                                         'Operation': op}, ignore_index=True) 
-            
-         pd_new = pd.concat([pop_df_new, pop_df_sechalf], ignore_index=True, axis=0)
-         pop_df_new = top_half(evaluate(pd_new))
-         print(pop_df_new.iloc[:10]['Results'])
-         R = pop_df_new.iloc[0]['Results'][0] + pop_df_new.iloc[0]['Results'][1]
-         MCR = 1 - (R/2000)
-         print('MCR is: ', MCR)
-         count+=1 
-        
-     pop_df_final = pop_df_new  
-     print('----------Final Population (10)-----------\n',pop_df_final.head(10))
-     print('----------Top 5-----------\n',pop_df_final.iloc[:,[2,6]])
-     print('----------Best Individual-----------\n',pop_df_final.iloc[0])
-     return pop_df_final
-        
- 
-            
-Infered_STL = GA(x_reg, y_reg, x_anom, y_anom, rng_mod)
+
