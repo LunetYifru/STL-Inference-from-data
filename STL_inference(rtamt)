@@ -41,9 +41,7 @@ def initialize(x_reg,y_reg,x_anom,y_anom,rng_mod):
     population['phi11'] = GP_opt('F[{0},{1}](y > {2:.2f})',op[10], x_reg,y_reg,x_anom,y_anom,rng_mod)
     population['phi12'] = GP_opt('F[{0},{1}](y < {2:.2f})',op[11], x_reg,y_reg,x_anom,y_anom,rng_mod)   
     population['phi13'] = GP_opt('(x<{2:.2f})U[{0},{1}](y>{3:.2f})',op[12], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi14'] = GP_opt('(x>{2:.2f})U[{0},{1}](y<{3:.2f})',op[13], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi15'] = GP_opt('(y>{2:.2f})U[{0},{1}](x>{3:.2f})',op[14], x_reg,y_reg,x_anom,y_anom,rng_mod)
-    population['phi16'] = GP_opt('(y<{2:.2f})U[{0},{1}](x<{3:.2f})',op[15], x_reg,y_reg,x_anom,y_anom,rng_mod)
+    population['phi14'] = GP_opt('(y>{2:.2f})U[{0},{1}](x>{3:.2f})',op[14], x_reg,y_reg,x_anom,y_anom,rng_mod)
         
 
     pop_df['Name'] = population.keys()
@@ -53,7 +51,7 @@ def initialize(x_reg,y_reg,x_anom,y_anom,rng_mod):
  ##########  initialization of formulae with binary operators ##########
     pop_ext = {}
     N = []  
-    for i in range(16, 50):
+    for i in range(14, 50):
         random.seed()
         rand = random.randint(1, 2) 
         
