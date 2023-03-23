@@ -21,9 +21,6 @@ rng = [rng_x_reg, rng_y_reg, rng_x_anom, rng_y_anom, len(x_reg)]
 rng_mod = [min(rng_x_reg[0],rng_y_reg[0],rng_x_anom[0],rng_y_anom[0]), max(rng_x_reg[1],rng_y_reg[1],rng_x_anom[1],rng_y_anom[1]),len(x_reg)]
 
 
-
-
-
  ###########  Random initialization of primary population and GP_opt to update parameters  ##########
 def initialize(x_reg,y_reg,x_anom,y_anom,rng_mod):
     print('-------------Initializing population--------------')
@@ -86,22 +83,21 @@ def initialize(x_reg,y_reg,x_anom,y_anom,rng_mod):
 
 # ##############################     computing parameters for formula           ##################
 
-def compute_rob(phi,operation): 
-    
-#    print('fromula: ', phi, operation)
+def compute_rob(phi,operation):    
     
     rob_reg = np.empty(0)
     rob_anom = np.empty(0)
     
     for i in range(len(x_reg.columns)):
-        if operation == 'F' or operation == 'U' or operation == 'G':
-            rob_r = robustness(signal(x_reg,y_reg,i), specification(phi))[0]
-            rob_a = robustness(signal(x_anom,y_anom,i), specification(phi))[0]
+        
+        if operation == '>' or operation == '<' or operation == '&' or operation == '|' or operation == 'not':
+             rob_r = min(robustness(signal(x_reg,y_reg,i), specification(phi)))
+             rob_a = min(robustness(signal(x_anom,y_anom,i), specification(phi)))
 
-        elif operation == '&' or operation == '|' or operation == 'not' or operation == '>' or operation == '<':
-            rob_r = min(robustness(signal(x_reg,y_reg,i), specification(phi)))
-            rob_a = min(robustness(signal(x_anom,y_anom,i), specification(phi)))
-                 
+        elif operation == 'G' or operation == 'F' or operation == 'U':
+             rob_r =robustness(signal(x_reg,y_reg,i), specification(phi))[0]
+             rob_a = robustness(signal(x_anom,y_anom,i), specification(phi))[0]
+               
 
         rob_reg = np.append(rob_reg, rob_r)
         rob_anom = np.append(rob_anom, rob_a)
@@ -114,6 +110,7 @@ def compute_rob(phi,operation):
          if i< 0:neg +=1
     
     results = [pos, neg]
+    print(phi,'-----------',operation,'--------', results)
 #    print(results)
     # rob_diff = np.absolute(np.average(rob_reg) - np.average(rob_anom))   
     return results
@@ -130,8 +127,8 @@ def fitness_func(results, size):
     if size < 4:
        Fitness_score = results[1]+results[0]
     else:
-        # decrease robustness by (size-2)X10 % for sizes greater than 2
-        Fitness_score = (results[1]+results[0])*(1-((size-4)/10))
+        # decrease robustness by (size-3)X10 % for sizes greater than 2
+        Fitness_score = (results[1]+results[0])*(1-((size-3)/10))
     return Fitness_score
  
 # ###################      Compute robustness, size, and fitness       ###########################
@@ -224,8 +221,14 @@ def mutate(index, pop_df_new):
                 d = digits[i]
                 formula = re.sub(fr'\b{d}(?!:)\b', replacements[i], formula)
             phi = formula
+            
+            if '>' in phi:
+                phi = phi.replace('>','<',1)
+            elif '<' in formula:
+                phi = phi.replace('<','>',1)
          else:
             phi = A[1]+'U[{0},{1}]'+A[0]
+            
          phi = GP_opt(phi,op, x_reg,y_reg,x_anom,y_anom,rng_mod)              
          return phi,op
      else:
@@ -363,7 +366,7 @@ def GA(x_reg, y_reg, x_anom, y_anom, rng_mod):
                                          'Operation': op}, ignore_index=True) 
             
          pd_new = pd.concat([pop_df_new, pop_df_sechalf], ignore_index=True, axis=0)
-         pop_df_new = top_half(evaluate(pd_new))
+         pop_df_new = top_half(rank(evaluate(pd_new)))
          print(pop_df_new.iloc[:10]['Results'])
          R = pop_df_new.iloc[0]['Results'][0] + pop_df_new.iloc[0]['Results'][1]
          MCR = 1 - (R/2000)
