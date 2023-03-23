@@ -124,7 +124,7 @@ def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
     print(bounds)
 
     initial_design = GPyOpt.experiment_design.initial_design(
-        'random', feasible_region, 15)
+        'random', feasible_region, 20)
 
     # print(initial_design)
     # --- CHOOSE the objective
@@ -151,7 +151,7 @@ def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
 
     # --- Stop conditions
     max_time = None
-    max_iter = 5
+    max_iter = 10
     tolerance = 1e-8     # distance between two consecutive observations
 
     # Run the optimization
