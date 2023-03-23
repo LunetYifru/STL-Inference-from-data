@@ -42,6 +42,7 @@ def initialize(x_reg,y_reg,x_anom,y_anom,rng_mod):
     population['phi12'] = GP_opt('F[{0},{1}](y < {2:.2f})',op[11], x_reg,y_reg,x_anom,y_anom,rng_mod)   
     population['phi13'] = GP_opt('(x<{2:.2f})U[{0},{1}](y>{3:.2f})',op[12], x_reg,y_reg,x_anom,y_anom,rng_mod)
     population['phi14'] = GP_opt('(y>{2:.2f})U[{0},{1}](x>{3:.2f})',op[14], x_reg,y_reg,x_anom,y_anom,rng_mod)
+
         
 
     pop_df['Name'] = population.keys()
@@ -109,7 +110,6 @@ def compute_rob(phi,operation):
     
     results = [pos, neg]
     print(phi,'-----------',operation,'--------', results)
-#    print(results)
     # rob_diff = np.absolute(np.average(rob_reg) - np.average(rob_anom))   
     return results
 
@@ -139,9 +139,9 @@ def evaluate(pop_df):
      for i in range(len(pop_df)):
          formula = pop_df.iloc[i]['Formula']
          operation = pop_df.iloc[i]['Operation']
-         pop_res.append(compute_rob(formula, operation))
-         pop_size.append(size(formula))
-         pop_fit.append(fitness_func(pop_res[-1], pop_size[-1]))
+         pop_res.append(compute_rob(formula, operation)) #robustness(results)
+         pop_size.append(size(formula)) #size
+         pop_fit.append(fitness_func(pop_res[-1], pop_size[-1])) #fitness
          
      pop_df['Size'] = pop_size
      pop_df['Fitness'] = pop_fit
@@ -165,7 +165,6 @@ def rank(pop_df_evaluated):
 ####################       New generation parents (Top 25)   ################
 def top_half(pop_df_ranked):
     pop_df_new = pop_df_ranked.head(25)
-#    print(pop_df_new.head(10))
     return pop_df_new
 
 #print(XX)
@@ -232,7 +231,6 @@ def mutate(index, pop_df_new):
      else:
          return formula,op1
 
-#
 def crossover(index1,index2,pop_df_new):
      formula1 = pop_df_new.iloc[index1]['Formula']
      formula2 = pop_df_new.iloc[index2]['Formula']
@@ -244,7 +242,6 @@ def crossover(index1,index2,pop_df_new):
      
      if ((op1 == '<') or (op1 == '>')) and ((op2 == '<') or (op2 == '>')):
          phi1 = formula1.split(op1)[0]+op1+'{2:.2f})U[{0},{1}]'+formula2.split(op2)[0]+op2+'{3:.2f}'
-
      if op1 =='&' :
          op = ['&','&']
          if (op2 =='|' ):
@@ -262,8 +259,7 @@ def crossover(index1,index2,pop_df_new):
          elif op2 == 'U':
              A = re.split(r'U\[\d+,\d+\]',formula2)
              phi1 = formula1[:formula1.find('&')]+op[0]+A[1]
-             phi2 = A[0]+op[1]+formula1[formula1.find('&')+1:]
-             
+             phi2 = A[0]+op[1]+formula1[formula1.find('&')+1:]            
          return [phi1,phi2,op]
      elif op1 == '|':
          op = ['|','|']
@@ -277,8 +273,7 @@ def crossover(index1,index2,pop_df_new):
              
          elif ( op2 == 'G') or (op2 == 'F') or ((op2 =='<') and (size(formula2)==1)) or ((op2 =='>') and (size(formula2)==1))  or ((op2 == 'not' and size(formula2)==1)):
              phi1 = formula1[:formula1.find('|')]+op[0]+'('+formula2+')'
-             phi2 = formula1[formula1.find('|')+1:]+op[1]+'('+formula2+')'
-             
+             phi2 = formula1[formula1.find('|')+1:]+op[1]+'('+formula2+')'           
          elif op2 == 'U':
              A = re.split(r'U\[\d+,\d+\]',formula2)
              phi1 = formula1[:formula1.find('|')]+op[0]+A[1]
@@ -318,19 +313,15 @@ def crossover(index1,index2,pop_df_new):
          elif op2 == '|':
              phi1 = '('+formula1+')' + op[0] + formula2[formula2.find('|')+1:]
              phi2 = '('+formula1+')' + op[1] + formula2[:formula2.find('|')]
-         return [phi1,phi2,op]
-         
+         return [phi1,phi2,op]         
      else:
           return [formula1,formula2,[op1,op2]]
 
-
-################################    GA    ############################################
+################################    Genetic Algorithm    #######################################
 def GA(x_reg, y_reg, x_anom, y_anom, rng_mod):
 
      pop_df = initialize(x_reg, y_reg, x_anom, y_anom, rng_mod)
-     pop_df_evaluated = evaluate(pop_df)
-     pop_df_ranked = rank(pop_df_evaluated)
-     pop_df_new = top_half(pop_df_ranked)
+     pop_df_new = top_half(rank(evaluate(pop_df)))
      count = 1
      MCR = 100
      N = []
@@ -365,18 +356,16 @@ def GA(x_reg, y_reg, x_anom, y_anom, rng_mod):
             
          pd_new = pd.concat([pop_df_new, pop_df_sechalf], ignore_index=True, axis=0)
          pop_df_new = top_half(rank(evaluate(pd_new)))
-         print(pop_df_new.iloc[:10]['Results'])
          R = pop_df_new.iloc[0]['Results'][0] + pop_df_new.iloc[0]['Results'][1]
          MCR = 1 - (R/2000)
          print('MCR is: ', MCR)
          count+=1 
         
      pop_df_final = pop_df_new  
-     print('----------Final Population (10)-----------\n',pop_df_final.head(10))
-     print('----------Top 5-----------\n',pop_df_final.iloc[:,[2,6]])
+     print('----------Final Population (Top 10)-----------\n',pop_df_final.head(10))
      print('----------Best Individual-----------\n',pop_df_final.iloc[0])
      return pop_df_final
         
  
-            
+# Run the algorithm            
 Infered_STL = GA(x_reg, y_reg, x_anom, y_anom, rng_mod)
