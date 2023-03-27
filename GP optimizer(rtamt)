@@ -65,7 +65,7 @@ def GP_opt(spec,operation, x_reg,y_reg,x_anom,y_anom,rng_mod):
             phi = spec.format(t1,t2,c)
         elif operation =='U':
             phi = spec.format(t1,t2,c1,c2)
-        print(phi)    
+#        print(phi)    
         rob_reg = np.empty(0)
         rob_anom = np.empty(0)
 
