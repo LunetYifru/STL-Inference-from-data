@@ -13,20 +13,16 @@ y_reg = pd.read_excel(r'x2_reg.xlsx', header=None)
 x_anom = pd.read_excel(r'x1_anom.xlsx', header=None)
 y_anom = pd.read_excel(r'x2_anom.xlsx', header=None)
 
-rng_x_reg = (min(x_reg.min()), max(x_reg.max()))
-rng_y_reg = (min(y_reg.min()), max(y_reg.max()))
-rng_x_anom = (min(x_anom.min()), max(x_anom.max()))
-rng_y_anom = (min(y_anom.min()), max(y_anom.max()))
-rng = [rng_x_reg, rng_y_reg, rng_x_anom, rng_y_anom, len(x_reg)]
-rng_mod = [min(rng_x_reg[0],rng_y_reg[0],rng_x_anom[0],rng_y_anom[0]), max(rng_x_reg[1],rng_y_reg[1],rng_x_anom[1],rng_y_anom[1]),len(x_reg)]
+rng_mod = [min(min(x_reg.min()),min(y_reg.min()),min(x_anom.min()),min(y_anom.min())), max(max(x_reg.max()),max(y_reg.max()),max(x_anom.max()),max(y_anom.max())),len(x_reg)]
 
 
  ###########  Random initialization of primary population and GP_opt to update parameters  ##########
 def initialize(x_reg,y_reg,x_anom,y_anom,rng_mod):
+
     print('-------------Initializing population--------------')
     population = {}
     pop_df = pd.DataFrame()
-    op = ['>','<','>','<','G','G','G','G','F','F','F','F','U','U','U','U']
+    op = ['>','<','>','<','G','G','G','G','F','F','F','F','U','U']
     
     population['phi1'] = GP_opt('x > {0:.2f}',op[0], x_reg,y_reg,x_anom,y_anom,rng_mod)
     population['phi2'] = GP_opt('x < {0:.2f}',op[1], x_reg,y_reg,x_anom,y_anom,rng_mod)
@@ -240,8 +236,8 @@ def crossover(index1,index2,pop_df_new):
      print(formula1)
      print(formula2)
      
-     if ((op1 == '<') or (op1 == '>')) and ((op2 == '<') or (op2 == '>')):
-         phi1 = formula1.split(op1)[0]+op1+'{2:.2f})U[{0},{1}]'+formula2.split(op2)[0]+op2+'{3:.2f}'
+     # if ((op1 == '<') or (op1 == '>')) and ((op2 == '<') or (op2 == '>')):
+     #     phi1 = formula1.split(op1)[0]+op1+'{2:.2f})U[{0},{1}]'+formula2.split(op2)[0]+op2+'{3:.2f}'
      if op1 =='&' :
          op = ['&','&']
          if (op2 =='|' ):
